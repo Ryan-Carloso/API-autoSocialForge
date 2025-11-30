@@ -1,15 +1,11 @@
 import Fastify from "fastify";
-import fs from "fs";
-import path from "path";
 import fetch from "node-fetch";
-import dotenv from "dotenv";
-
-dotenv.config();
+import config from "./config";
+import { supabase } from "../supabase/supabase.init";
 
 const fastify = Fastify();
 
-const POSTBRIDGE_TOKEN = process.env.POSTBRIDGE_TOKEN!;
-const SOCIAL_ACCOUNT_ID = Number(process.env.SOCIAL_ACCOUNT_ID || 12345);
+const POSTBRIDGE_TOKEN = config.postbridgeToken;
 
 // Função que gera a imagem da legenda
 async function generateCaptionImage(text: string): Promise<Buffer> {
@@ -67,19 +63,53 @@ fastify.post("/post", async (request, reply) => {
 
   console.log("Caption recebida:", caption);
 
-  let filePath: string;
-  try {
-    const imageBuffer = await generateCaptionImage(caption);
-    filePath = path.join(process.cwd(), "output.png");
-    fs.writeFileSync(filePath, imageBuffer);
-  } catch (err) {
-    return reply.status(500).send({ ok: false, error: "canvas module not available" });
+  const result = await postToBridge(caption);
+  return reply.send({ ok: true, caption, publicUrl: result.mediaUrl, postbridgeResponse: result.response });
+});
+
+const port = config.port;
+fastify
+  .listen({ port, host: "0.0.0.0" })
+  .then((address) => {
+    console.log(config.groups);
+    console.log("Server listening at", address);
+    const caption = process.env.STARTUP_CAPTION;
+    if (caption) {
+      postToBridge(caption)
+        .then((r) => {
+          console.log("Startup post OK", { mediaUrl: r.mediaUrl, postbridge: r.response });
+        })
+        .catch((e) => {
+          console.error("Startup post FAIL", e);
+        });
+    } else {
+      console.log("No STARTUP_CAPTION defined, skipping startup post.");
+    }
+  })
+  .catch((err) => {
+    console.error(err);
+    process.exit(1);
+  });
+
+async function postToBridge(caption: string): Promise<{ mediaUrl: string; response: any }> {
+  const imageBuffer = await generateCaptionImage(caption);
+
+  let mediaUrl = "";
+  if (supabase) {
+    const filename = `${config.supabaseFolder}${Date.now()}-${Math.random().toString(36).slice(2)}.png`;
+    const upload = await supabase.storage.from(config.supabaseBucket).upload(filename, imageBuffer, {
+      contentType: "image/png",
+      upsert: true,
+    });
+    if (upload.error) {
+      throw new Error(`Supabase upload failed: ${upload.error.message}`);
+    }
+    const pub = supabase.storage.from(config.supabaseBucket).getPublicUrl(filename);
+    mediaUrl = pub.data.publicUrl;
+  } else {
+    throw new Error("Supabase client not initialized");
   }
 
-  // 2) Mock URL (substituir futuramente pelo upload real)
-  const fakeMediaUrl = "https://example.com/mock-media.png";
-
-  // 3) Enviar para PostBridge
   const resp = await fetch("https://api.post-bridge.com/v1/posts", {
     method: "POST",
     headers: {
@@ -88,29 +118,11 @@ fastify.post("/post", async (request, reply) => {
     },
     body: JSON.stringify({
       caption,
-      media_urls: [fakeMediaUrl],
-      social_accounts: [SOCIAL_ACCOUNT_ID],
+      media_urls: [mediaUrl],
+      social_accounts: config.accountIds,
+      is_draft: config.isDev,
     }),
   });
-
   const data = await resp.json();
-
-  return reply.send({
-    ok: true,
-    caption,
-    localImage: filePath,
-    mediaMock: fakeMediaUrl,
-    postbridgeResponse: data,
-  });
-});
-
-const port = Number(process.env.PORT) || 3000;
-fastify
-  .listen({ port, host: "0.0.0.0" })
-  .then((address) => {
-    console.log("Server listening at", address);
-  })
-  .catch((err) => {
-    console.error(err);
-    process.exit(1);
-  });
+  return { mediaUrl, response: data };
+}
