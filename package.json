@@ -4,7 +4,6 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "tsx src/index.ts"
   },
   "repository": {
@@ -21,10 +20,13 @@
   "homepage": "https://github.com/Ryan-Carloso/API-AutoPostBridge#readme",
   "devDependencies": {
     "@types/node": "^24.10.1",
-    "typescript": "^5.9.3",
-    "tsx": "^4.19.2"
+    "tsx": "^4.19.2",
+    "typescript": "^5.9.3"
   },
   "dependencies": {
-    "fastify": "^5.6.2"
+    "@napi-rs/canvas": "^0.1.54",
+    "dotenv": "^17.2.3",
+    "fastify": "^5.6.2",
+    "node-fetch": "^3.3.2"
   }
 }
