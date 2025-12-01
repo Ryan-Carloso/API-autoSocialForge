@@ -1,3 +1,5 @@
 .env
 /node_modules/
-dev_output/
+/dev_output/
+
+/audio/

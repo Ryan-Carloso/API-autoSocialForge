@@ -1,64 +1,79 @@
 # API AutoPostBridge
 
-Automated social media posting bridge that generates content (via Gemini AI or raw topics) and posts to the PostBridge API.
+An automated content generation and social media posting engine. It intelligently generates Videos, Carousels, and Audio-Visuals using AI and posts them via the PostBridge API.
 
-## Features
+## 🚀 How to Run (Step-by-Step)
 
-- **Multi-Group Support**: Configure different account groups (e.g., Football, Gym) with separate content sources.
-- **AI Content Generation**: Uses Google Gemini API to generate captions and image text overlays.
-- **Fallback Mechanism**: Automatically falls back to raw topics if AI generation fails or quota is exceeded.
-- **Supabase Integration**: Uploads generated images to Supabase Storage.
-- **Draft Mode**: `IS_DEV=true` posts as drafts for testing.
+### 1. Prerequisites
+*   **Node.js** (v18 or higher)
+*   **PostBridge Account** (for API Key and Social Account IDs)
+*   **Supabase Project** (for file storage)
+*   **AI Keys**: Google Gemini (Text/Scripting) & OpenAI (Video/Audio/TTS)
 
-## Setup
+### 2. Installation
+Clone the repository and install dependencies:
 
-1.  **Install Dependencies**:
-    ```bash
-    npm install
-    ```
-
-2.  **Environment Configuration**:
-    Copy `.example.env` to `.env` and configure your keys.
-
-    ```bash
-    cp .example.env .env
-    ```
-
-3.  **Configuration Rules**:
-    -   **Groups**: Define account groups using `ACCOUNTS_<NAME>` (comma-separated IDs).
-    -   **Content Paths**: For *every* group, you must define a corresponding `CONTENT_PATH_<NAME>`.
-    -   **Content Modules**: The content path must point to a TypeScript file exporting an `ideas` array (or default array).
-
-    **Example**:
-    ```env
-    # Group: Football
-    ACCOUNTS_FOOTBALL=123,456
-    CONTENT_PATH_FOOTBALL=src/contents/football.ts
-    ```
-
-4.  **Run**:
-    ```bash
-    npm run dev
-    ```
-
-## Content Module Format
-
-Create a TypeScript file (e.g., `src/contents/my-topic.ts`):
-
-```typescript
-export const ideas = [
-  "Topic 1",
-  "Topic 2",
-  "Topic 3"
-];
+```bash
+git clone <repository-url>
+cd API-AutoPostBridge
+npm install
 ```
 
-## Changelog
+### 3. Configuration
+Create your environment file:
 
-### [Latest] - Legacy Cleanup & Group Restructuring
+```bash
+cp .example.env .env
+```
 
--   **Removed**: Deprecated `IDEAS_CONTENT_*` environment variables (JSON strings in .env).
--   **Removed**: Single `CONTENT_PATH` configuration.
--   **Changed**: Content system now requires a 1:1 mapping between Account Groups (`ACCOUNTS_<NAME>`) and Content Paths (`CONTENT_PATH_<NAME>`).
--   **Added**: Strict validation at startup. The application will fail to start if an Account Group is defined without a corresponding Content Path.
--   **Refactored**: Startup logic now iterates through all configured groups, generating and posting unique content for each group.
+Open `.env` and fill in your keys:
+*   **`API_KEY_POSTBRIDGE`**: Your PostBridge API Token.
+*   **`GEMINI_API_KEY`**: For generating scripts, captions, and image designs.
+*   **`OPENAI_API_KEY`**: For Speech-to-Text, Text-to-Speech, and Video generation.
+*   **`SUPABASE_*`**: Connection details for your Supabase Storage bucket.
+
+### 4. Define Your Content Groups
+The system works by defining "Groups". Each group has a list of social account IDs and a source of content topics.
+
+In your `.env` file, add groups like this:
+
+```env
+# Group Name: FOOTBALL
+ACCOUNTS_FOOTBALL=1001,1002              # Comma-separated Social Account IDs
+CONTENT_PATH_FOOTBALL=./src/football.ts  # Local file OR URL to JSON endpoint
+```
+
+### 5. Start the Engine
+Run the development server:
+
+```bash
+npm run dev
+```
+
+The system will:
+1.  Load your content topics.
+2.  Randomly select a content type:
+    *   **Video (5%)**: AI-generated vertical video.
+    *   **Carousel (47.5%)**: Text-to-Image slides with white background.
+    *   **Audio (47.5%)**: Text-to-Speech with synchronized subtitles.
+3.  Generate the media assets.
+4.  Upload to Supabase.
+5.  Post to your social accounts via PostBridge.
+
+---
+
+## 📂 Project Structure
+
+*   `src/controller.ts`: Main logic for probability distribution and delegation.
+*   `src/generateContent/`: Modular generators.
+    *   `text2audio/`: TTS + FFmpeg visualization.
+    *   `text2video/`: AI Video generation.
+    *   `text2carousel/`: Canvas-based image generation.
+*   `src/services/`: Shared AI services (Gemini, OpenAI).
+*   `src/config.ts`: Environment variable management.
+
+## 🛠 Troubleshooting
+
+*   **FFmpeg Error?**: Ensure `ffmpeg` is installed on your system (`brew install ffmpeg` on Mac).
+*   **Canvas Error?**: You may need to install build tools if `@napi-rs/canvas` fails to load.
+*   **Missing Keys?**: Double-check your `.env` file. The app will crash if required keys are missing.

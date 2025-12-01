@@ -1,8 +1,7 @@
 import fetch from "node-fetch";
 import config from "./config";
 import { supabase } from "../supabase/supabase.init";
-import { generateCaption, generateVideoScript } from "./services/gemini";
-import { generateVideoOpenAI } from "./services/openai";
+import { Controller } from "./controller";
 import path from "path";
 import fs from "fs";
 
@@ -28,6 +27,24 @@ async function postToBridge(caption: string, mediaBuffers: Buffer[], mimeType: s
 
   let mediaUrls: string[] = [];
   if (supabase) {
+    // Optional: authenticate if credentials are provided to satisfy bucket RLS
+    try {
+      if (config.supabaseEmail && config.supabasePassword) {
+        const { data: sessionData } = await supabase.auth.getSession();
+        if (!sessionData?.session) {
+          const { error: signInError } = await supabase.auth.signInWithPassword({
+            email: config.supabaseEmail,
+            password: config.supabasePassword,
+          });
+          if (signInError) {
+            console.warn(`[SUPABASE WARNING] Sign-in failed: ${signInError.message}`);
+          }
+        }
+      }
+    } catch (e) {
+      console.warn(`[SUPABASE WARNING] Auth step encountered an issue: ${(e as any)?.message || e}`);
+    }
+
     for (const buffer of mediaBuffers) {
         const ext = mimeType.split("/")[1] || "bin";
         const filename = `${config.supabaseFolder}${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
@@ -38,8 +55,14 @@ async function postToBridge(caption: string, mediaBuffers: Buffer[], mimeType: s
         if (upload.error) {
           throw new Error(`Supabase upload failed: ${upload.error.message}`);
         }
-        const pub = supabase.storage.from(config.supabaseBucket).getPublicUrl(filename);
-        mediaUrls.push(pub.data.publicUrl);
+        // Prefer a signed URL to avoid bucket policy issues
+        const signed = await supabase.storage.from(config.supabaseBucket).createSignedUrl(filename, 60 * 60 * 24 * 7);
+        if (signed.error || !signed.data?.signedUrl) {
+          const pub = supabase.storage.from(config.supabaseBucket).getPublicUrl(filename);
+          mediaUrls.push(pub.data.publicUrl);
+        } else {
+          mediaUrls.push(signed.data.signedUrl);
+        }
     }
   } else {
     throw new Error("Supabase client not initialized");
@@ -107,91 +130,46 @@ async function runStartup() {
       continue; // Skip to next group
     }
 
-    // 2. Pick Random Topic
-    const selectedItem = contentList[Math.floor(Math.random() * contentList.length)];
-    let topicPrompt = "";
-    let shortTitle = "";
-
-    if (typeof selectedItem === "string") {
-      topicPrompt = selectedItem;
-      shortTitle = selectedItem;
-      console.log(`Selected topic: "${shortTitle}"`);
-    } else if (typeof selectedItem === "object" && selectedItem !== null) {
-      shortTitle = selectedItem.title || "New Post";
-      console.log(`Selected item title: "${shortTitle}"`);
-      
-      let contentText = "";
-      try {
-        if (selectedItem.content) {
-          const contentObj = JSON.parse(selectedItem.content);
-          if (Array.isArray(contentObj.contentElements)) {
-            contentText = contentObj.contentElements
-              .map((el: any) => {
-                if (el.type === "paragraph" && Array.isArray(el.content)) {
-                  return el.content.map((c: any) => c.text).join("");
-                }
-                return "";
-              })
-              .filter((s: string) => s.length > 0)
-              .join("\n");
-          }
-        }
-      } catch (e) {
-        console.warn("Failed to parse content JSON, using title only.");
-      }
-      
-      topicPrompt = `Title: ${shortTitle}\n\nContext: ${contentText}`;
-    } else {
-      console.warn("Unknown item format, using JSON stringify.");
-      topicPrompt = JSON.stringify(selectedItem);
-      shortTitle = "New Post";
-    }
-
-    // 3. Generate Content (AI or Fallback)
-    let caption = shortTitle;
-    let mediaBuffers: Buffer[] = [];
-    let mimeType = "video/mp4";
-    let metadata: any = {};
-
-    if (config.geminiKey) {
-      console.log("Gemini Key found. Generating AI content...");
-      try {
-        // 1. Generate Optimized Script (Single Part)
-        console.log("Generating video script...");
-        const script = await generateVideoScript(topicPrompt);
-        
-        // 2. Generate Video & Caption
-        console.log("Generating caption...");
-        const genCaption = await generateCaption(topicPrompt);
-        
-        console.log("Generating video with OpenAI...");
-        const videoData = await generateVideoOpenAI(script);
-
-        caption = genCaption;
-        mediaBuffers = [videoData];
-        console.log("AI Generation successful.");
-      } catch (error: any) {
-        console.error("AI Generation failed:", error.message);
-      }
-    } else {
-      console.log("No Gemini Key. Skipping generation.");
-    }
-
-    if (mediaBuffers.length === 0) {
-        console.error("No media generated. Skipping post.");
-        continue;
-    }
-
-    // 4. Post
+    // 2. Process Group with Controller
     try {
-      console.log("Posting to Bridge...");
-      const result = await postToBridge(caption, mediaBuffers, mimeType, group.accountIds, metadata);
-      console.log("Post successful!", {
-        mediaUrls: result.mediaUrls,
-        response: result.response
-      });
+        const generatedContent = await Controller.processGroup(group.name, contentList);
+        
+        let mediaBuffers: Buffer[] = [];
+        let mimeType = "video/mp4";
+
+        // Read files into buffers
+        for (const p of generatedContent.mediaPaths) {
+            if (fs.existsSync(p)) {
+                mediaBuffers.push(fs.readFileSync(p));
+            } else {
+                console.warn(`[WARNING] Generated file not found: ${p}`);
+            }
+        }
+        
+        if (mediaBuffers.length === 0) {
+            throw new Error("No valid media files generated.");
+        }
+        
+        if (generatedContent.type === 'carousel') {
+            mimeType = "image/png";
+        } else {
+            mimeType = "video/mp4";
+        }
+        
+        // 3. Post (skip in dev)
+        if (config.isDev) {
+            console.log("[DEV] Skipping PostBridge upload; media saved locally in 'dev_output/'.");
+        } else {
+            console.log("Posting to Bridge...");
+            const result = await postToBridge(generatedContent.caption, mediaBuffers, mimeType, group.accountIds);
+            console.log("Post successful!", {
+                mediaUrls: result.mediaUrls,
+                response: result.response
+            });
+        }
+
     } catch (error: any) {
-      console.error(`[GROUP ERROR] Posting failed for ${group.name}:`, error);
+        console.error(`[GROUP ERROR] Processing failed for ${group.name}:`, error);
     }
   }
   

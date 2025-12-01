@@ -1,4 +1,10 @@
 TODO:
+
+FIX: 
+has error on supabase
+[GROUP ERROR] Processing failed for GYM: Error: Supabase upload failed: new row violates row-level security policy
+
+
 Gym
 Use my own blog remindergym.com as the source for context and post ideas.
 

@@ -2,7 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import config from "../src/config";
 
 const supabaseUrl = config.supabaseUrl;
-const supabaseKey = config.supabaseKey;
+const supabaseKey = (config as any).supabaseServiceKey || config.supabaseKey;
 
 // Since config.ts now throws if these are missing, we don't strictly need the check here,
 // but TS might complain about string | undefined if not cast, but config returns string.

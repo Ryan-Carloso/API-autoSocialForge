@@ -15,8 +15,7 @@ export async function generateCaption(topic: string): Promise<string> {
     throw new Error("Gemini API Key not configured.");
   }
   
-  // User requested "gemini-2.5-flash"
-  const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-preview-09-2025" });
+  const model = genAI.getGenerativeModel({ model: "gemini-3-pro-preview" });
 
   const prompt = `
     You are a creative social media strategist.
@@ -42,7 +41,30 @@ export async function generateCaption(topic: string): Promise<string> {
     return response.text().trim();
   } catch (error) {
     console.error("Gemini caption generation failed:", error);
-    throw error;
+    // Fallback to topic to allow flow to continue
+    return `${topic} #GymLife #Fitness`;
+  }
+}
+
+export async function generateCarouselText(topic: string): Promise<string> {
+  if (!genAI) {
+    // Fallback if no key
+    return topic;
+  }
+  // Use preview model
+  const model = genAI.getGenerativeModel({ model: "gemini-3-pro-preview" });
+  const prompt = `
+    You are a creative writer.
+    Create a short, punchy phrase (max 6-8 words) for a social media slide based on: ${topic}.
+    Return ONLY the text. No JSON, no quotes, no explanations.
+  `;
+  try {
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    return response.text().trim();
+  } catch (error) {
+    console.error("Gemini carousel text generation failed:", error);
+    return topic; 
   }
 }
 
@@ -58,8 +80,7 @@ export async function generateImageDesign(topic: string): Promise<ImageDesign> {
     throw new Error("Gemini API Key not configured.");
   }
 
-  // User requested "gemini-2.5-flash" for the prompt creation
-  const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-preview-09-2025", generationConfig: { responseMimeType: "application/json" } });
+  const model = genAI.getGenerativeModel({ model: "gemini-3-pro-preview", generationConfig: { responseMimeType: "application/json" } });
 
   const prompt = `
     You are a creative graphic designer.
@@ -106,7 +127,7 @@ export async function generateMultiPartVideoScript(content: string): Promise<Mul
     throw new Error("Gemini API Key not configured.");
   }
 
-  const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash", generationConfig: { responseMimeType: "application/json" } });
+  const model = genAI.getGenerativeModel({ model: "gemini-3-pro-preview", generationConfig: { responseMimeType: "application/json" } });
 
   const prompt = `
     You are a professional video scriptwriter for social media (TikTok/Reels).
@@ -177,7 +198,7 @@ export async function generateVideoScript(content: string): Promise<VideoScript>
   }
 
   // Use a text model for script generation
-  const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash", generationConfig: { responseMimeType: "application/json" } });
+  const model = genAI.getGenerativeModel({ model: "gemini-3-pro-preview", generationConfig: { responseMimeType: "application/json" } });
 
   const prompt = `
     You are a professional video scriptwriter for social media (TikTok/Reels).
