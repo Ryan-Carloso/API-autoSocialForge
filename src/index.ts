@@ -1,94 +1,33 @@
 import fetch from "node-fetch";
 import config from "./config";
 import { supabase } from "../supabase/supabase.init";
-import { generateCaption, generateImageDesign, ImageDesign } from "./services/gemini";
+import { generateCaption, generateVideo, generateVideoScript } from "./services/gemini";
 import path from "path";
 import fs from "fs";
 
 const POSTBRIDGE_TOKEN = config.postbridgeToken;
 
-// Helper to generate image using the design spec
-async function generateCaptionImage(design: ImageDesign): Promise<Buffer> {
-  const { createCanvas } = await import("@napi-rs/canvas");
-  const width = 1080;
-  const height = 1080;
-
-  const canvas = createCanvas(width, height);
-  const ctx = canvas.getContext("2d");
-
-  // 1. Fill Background
-  ctx.fillStyle = design.backgroundColor;
-  ctx.fillRect(0, 0, width, height);
-
-  // 2. Add subtle accent (optional geometric shape)
-  ctx.fillStyle = design.accentColor;
-  ctx.globalAlpha = 0.2; // Semi-transparent
-  ctx.beginPath();
-  ctx.arc(width, 0, 400, 0, Math.PI * 2);
-  ctx.fill();
-  
-  ctx.beginPath();
-  ctx.arc(0, height, 300, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.globalAlpha = 1.0; // Reset alpha
-
-  // 3. Draw Text
-  ctx.fillStyle = design.textColor;
-  ctx.font = "bold 60px Arial";
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-
-  const lines = wrapText(ctx, design.text, width - 100);
-  const lineHeight = 80;
-  const startY = height / 2 - (lines.length * lineHeight) / 2;
-
-  lines.forEach((line, i) => {
-    ctx.fillText(line, width / 2, startY + i * lineHeight);
-  });
-
-  return canvas.toBuffer("image/png");
-}
-
-function wrapText(ctx: any, text: string, maxWidth: number): string[] {
-  const words = text.split(" ");
-  const lines: string[] = [];
-  let line = "";
-
-  for (const word of words) {
-    const testLine = line + word + " ";
-    if (ctx.measureText(testLine).width > maxWidth) {
-      lines.push(line);
-      line = word + " ";
-    } else {
-      line = testLine;
-    }
-  }
-
-  lines.push(line);
-  return lines;
-}
-
 // Helper to post to bridge
-async function postToBridge(caption: string, design: ImageDesign, accountIds: number[]): Promise<{ mediaUrl: string; response: any }> {
-  const imageBuffer = await generateCaptionImage(design);
-
+async function postToBridge(caption: string, mediaBuffer: Buffer, mimeType: string, accountIds: number[]): Promise<{ mediaUrl: string; response: any }> {
   // If in DEV mode, save locally to verify image content
   if (config.isDev) {
     const devDir = path.join(process.cwd(), "dev_output");
     if (!fs.existsSync(devDir)) {
       fs.mkdirSync(devDir, { recursive: true });
     }
-    const localFilename = `dev_post_${Date.now()}.png`;
+    const ext = mimeType.split("/")[1] || "bin";
+    const localFilename = `dev_post_${Date.now()}.${ext}`;
     const localPath = path.join(devDir, localFilename);
-    fs.writeFileSync(localPath, imageBuffer);
-    console.log(`[DEV] Saved generated image to: ${localPath}`);
+    fs.writeFileSync(localPath, mediaBuffer);
+    console.log(`[DEV] Saved generated media to: ${localPath}`);
   }
 
   let mediaUrl = "";
   if (supabase) {
-    const filename = `${config.supabaseFolder}${Date.now()}-${Math.random().toString(36).slice(2)}.png`;
-    const upload = await supabase.storage.from(config.supabaseBucket).upload(filename, imageBuffer, {
-      contentType: "image/png",
+    const ext = mimeType.split("/")[1] || "bin";
+    const filename = `${config.supabaseFolder}${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+    const upload = await supabase.storage.from(config.supabaseBucket).upload(filename, mediaBuffer, {
+      contentType: mimeType,
       upsert: true,
     });
     if (upload.error) {
@@ -128,63 +67,117 @@ async function runStartup() {
     console.log(`Content Path: ${group.contentPath}`);
 
     // 1. Load Content
-    let contentList: string[] = [];
+    let contentList: any[] = [];
     try {
-      const importPath = path.resolve(process.cwd(), group.contentPath);
-      const module = await import(importPath);
-      
-      if (Array.isArray(module.ideas)) {
-        contentList = module.ideas;
-      } else if (Array.isArray(module.default)) {
-        contentList = module.default;
+      if (group.contentPath.startsWith("http")) {
+        const resp = await fetch(group.contentPath);
+        if (!resp.ok) throw new Error(`Failed to fetch content: ${resp.statusText}`);
+        const data = await resp.json();
+        if (Array.isArray(data)) {
+          contentList = data;
+        } else {
+          throw new Error("Remote content is not an array.");
+        }
       } else {
-        throw new Error("Module does not export 'ideas' array or default array.");
+        const importPath = path.resolve(process.cwd(), group.contentPath);
+        const module = await import(importPath);
+        
+        if (Array.isArray(module.ideas)) {
+          contentList = module.ideas;
+        } else if (Array.isArray(module.default)) {
+          contentList = module.default;
+        } else {
+          throw new Error("Module does not export 'ideas' array or default array.");
+        }
       }
       
       if (contentList.length === 0) {
         throw new Error("Content list is empty.");
       }
-      console.log(`Loaded ${contentList.length} ideas.`);
+      console.log(`Loaded ${contentList.length} items.`);
     } catch (error: any) {
-      console.error(`[GROUP ERROR] Failed to load content module for ${group.name}: ${error.message}`);
+      console.error(`[GROUP ERROR] Failed to load content for ${group.name}: ${error.message}`);
       continue; // Skip to next group
     }
 
     // 2. Pick Random Topic
-    const topic = contentList[Math.floor(Math.random() * contentList.length)];
-    console.log(`Selected topic: "${topic}"`);
+    const selectedItem = contentList[Math.floor(Math.random() * contentList.length)];
+    let topicPrompt = "";
+    let shortTitle = "";
+
+    if (typeof selectedItem === "string") {
+      topicPrompt = selectedItem;
+      shortTitle = selectedItem;
+      console.log(`Selected topic: "${shortTitle}"`);
+    } else if (typeof selectedItem === "object" && selectedItem !== null) {
+      shortTitle = selectedItem.title || "New Post";
+      console.log(`Selected item title: "${shortTitle}"`);
+      
+      let contentText = "";
+      try {
+        if (selectedItem.content) {
+          const contentObj = JSON.parse(selectedItem.content);
+          if (Array.isArray(contentObj.contentElements)) {
+            contentText = contentObj.contentElements
+              .map((el: any) => {
+                if (el.type === "paragraph" && Array.isArray(el.content)) {
+                  return el.content.map((c: any) => c.text).join("");
+                }
+                return "";
+              })
+              .filter((s: string) => s.length > 0)
+              .join("\n");
+          }
+        }
+      } catch (e) {
+        console.warn("Failed to parse content JSON, using title only.");
+      }
+      
+      topicPrompt = `Title: ${shortTitle}\n\nContext: ${contentText}`;
+    } else {
+      console.warn("Unknown item format, using JSON stringify.");
+      topicPrompt = JSON.stringify(selectedItem);
+      shortTitle = "New Post";
+    }
 
     // 3. Generate Content (AI or Fallback)
-    let caption = topic;
-    // Default design fallback
-    let design: ImageDesign = {
-      text: topic,
-      backgroundColor: "#FFFFFF",
-      textColor: "#000000",
-      accentColor: "#CCCCCC"
-    };
+    let caption = shortTitle;
+    let mediaBuffer: Buffer | null = null;
+    let mimeType = "video/mp4";
 
     if (config.geminiKey) {
       console.log("Gemini Key found. Generating AI content...");
       try {
-        const [genCaption, genDesign] = await Promise.all([
-          generateCaption(topic),
-          generateImageDesign(topic)
-        ]);
+        // 1. Generate Optimized Script first
+        console.log("Generating video script...");
+        const script = await generateVideoScript(topicPrompt);
+        
+        // 2. Generate Video & Caption sequentially to avoid overload
+        console.log("Generating caption...");
+        const genCaption = await generateCaption(topicPrompt);
+        
+        console.log("Generating video...");
+        const videoData = await generateVideo(script);
+
         caption = genCaption;
-        design = genDesign;
-        console.log("AI Generation successful.", design);
+        mediaBuffer = videoData;
+        console.log("AI Generation successful. Video size:", mediaBuffer.length);
       } catch (error: any) {
-        console.error("AI Generation failed, falling back to raw topic:", error.message);
+        console.error("AI Generation failed:", error.message);
       }
     } else {
-      console.log("No Gemini Key. Using raw topic.");
+      console.log("No Gemini Key. Skipping generation.");
+    }
+
+    if (!mediaBuffer) {
+        console.error("No media generated. Skipping post.");
+        continue;
     }
 
     // 4. Post
     try {
       console.log("Posting to Bridge...");
-      const result = await postToBridge(caption, design, group.accountIds);
+      const result = await postToBridge(caption, mediaBuffer, mimeType, group.accountIds);
       console.log("Post successful!", {
         mediaUrl: result.mediaUrl,
         response: result.response

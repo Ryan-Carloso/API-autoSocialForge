@@ -24,6 +24,7 @@
     "typescript": "^5.9.3"
   },
   "dependencies": {
+    "@google/genai": "^1.30.0",
     "@google/generative-ai": "^0.24.1",
     "@napi-rs/canvas": "^0.1.83",
     "@supabase/supabase-js": "^2.46.1",
