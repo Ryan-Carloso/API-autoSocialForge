@@ -17,6 +17,7 @@ const isDev = process.env.IS_DEV === "true";
 const port = Number(getEnv("PORT"));
 const postbridgeToken = getEnv("API_KEY_POSTBRIDGE");
 const geminiKey = process.env.GEMINI_API_KEY; // Optional now
+const openaiKey = process.env.OPENAI_API_KEY; // Optional but required for Sora
 
 // Parse Groups and Content Paths
 interface GroupConfig {
@@ -75,5 +76,6 @@ export default {
   supabaseFolder: getEnv("SUPABASE_FOLDER"),
   isDev,
   geminiKey,
+  openaiKey,
   groupConfigs,
 };

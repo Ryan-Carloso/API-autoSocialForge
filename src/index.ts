@@ -1,7 +1,8 @@
 import fetch from "node-fetch";
 import config from "./config";
 import { supabase } from "../supabase/supabase.init";
-import { generateCaption, generateVideo, generateVideoScript, generateMultiPartVideoScript } from "./services/gemini";
+import { generateCaption, generateVideoScript } from "./services/gemini";
+import { generateVideoOpenAI } from "./services/openai";
 import path from "path";
 import fs from "fs";
 
@@ -155,32 +156,20 @@ async function runStartup() {
     if (config.geminiKey) {
       console.log("Gemini Key found. Generating AI content...");
       try {
-        // 1. Generate Optimized Script first (Multi-Part)
-        console.log("Generating multi-part video script...");
-        const multiScript = await generateMultiPartVideoScript(topicPrompt);
+        // 1. Generate Optimized Script (Single Part)
+        console.log("Generating video script...");
+        const script = await generateVideoScript(topicPrompt);
         
-        metadata = {
-            merge_segments: true,
-            segment_count: 2,
-            segments: [
-                { part: 1, duration_est: multiScript.part1.estimatedSeconds },
-                { part: 2, duration_est: multiScript.part2.estimatedSeconds }
-            ]
-        };
-
-        // 2. Generate Video & Caption sequentially to avoid overload
+        // 2. Generate Video & Caption
         console.log("Generating caption...");
         const genCaption = await generateCaption(topicPrompt);
         
-        console.log("Generating video Part 1...");
-        const videoData1 = await generateVideo(multiScript.part1);
-        
-        console.log("Generating video Part 2...");
-        const videoData2 = await generateVideo(multiScript.part2);
+        console.log("Generating video with OpenAI...");
+        const videoData = await generateVideoOpenAI(script);
 
         caption = genCaption;
-        mediaBuffers = [videoData1, videoData2];
-        console.log("AI Generation successful. Video parts:", mediaBuffers.length);
+        mediaBuffers = [videoData];
+        console.log("AI Generation successful.");
       } catch (error: any) {
         console.error("AI Generation failed:", error.message);
       }

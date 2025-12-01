@@ -187,16 +187,23 @@ export async function generateVideoScript(content: string): Promise<VideoScript>
     ${content}
     
     Constraints:
-    1. Target Duration: 7 to 16 seconds.
-    2. Word Count: Keep the spoken script under 40 words (approx 2.5 words/sec).
+    1. Target Duration: 15 to 20 seconds.
+    2. Word Count: Keep the spoken script around 40-50 words (approx 2.5 words/sec).
     3. Structure: Hook -> Value -> Call to Action.
     4. Completeness: Ensure the script is a complete thought and doesn't trail off.
+    
+    For the visualPrompt:
+    - Describe a fit 23-year-old blonde woman speaking to the camera.
+    - Setting: Modern gym, electric blue/neon purple lighting.
+    - Style: High energy, fast cuts, dynamic motion.
+    - IMPORTANT: Do NOT include any iPhone mockups or UI elements.
+    - IMPORTANT: Include a text overlay instruction for "remindergym.com" to appear subtly.
     
     Output JSON format:
     {
       "scriptText": "The actual spoken words (narration) for the video.",
       "visualPrompt": "A detailed visual description for an AI video generator to create the scene. Include style, lighting, subject, and action.",
-      "estimatedSeconds": 10
+      "estimatedSeconds": 20
     }
     
     For the visualPrompt:
