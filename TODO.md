@@ -1,4 +1,5 @@
 TODO:
+add an config file to there be the maring and not on .env
 Gym
 Use my own blog remindergym.com as the source for context and post ideas.
 
