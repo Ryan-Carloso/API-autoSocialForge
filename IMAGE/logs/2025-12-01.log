@@ -276,3 +276,103 @@
 [2025-12-01T21:33:25.890Z] Saved /Users/itsector/Documents/GitHub/API-autoSocialForge/IMAGE/output/GYM/2025-12-01T21-33-25-624Z/metadata.json
 [2025-12-01T21:33:26.262Z] Group GYM error: Supabase upload failed: new row violates row-level security policy
 [2025-12-01T21:33:26.262Z] Image pipeline finished
+[2025-12-01T21:35:14.713Z] Starting image pipeline
+[2025-12-01T21:35:14.713Z] Processing group GYM
+[2025-12-01T21:35:15.193Z] Supabase table 'supplements' count=667
+[2025-12-01T21:35:15.194Z] Items per page=100
+[2025-12-01T21:35:15.194Z] Total pages=7
+[2025-12-01T21:35:15.194Z] Fetching page index=6, range [600, 699]
+[2025-12-01T21:35:25.167Z] Generated 4 images at /Users/itsector/Documents/GitHub/API-autoSocialForge/IMAGE/output/GYM/2025-12-01T21-35-24-876Z
+[2025-12-01T21:35:25.168Z] Saved /Users/itsector/Documents/GitHub/API-autoSocialForge/IMAGE/output/GYM/2025-12-01T21-35-24-876Z/metadata.json
+[2025-12-01T21:35:25.674Z] Group GYM error: Supabase upload failed: new row violates row-level security policy
+[2025-12-01T21:35:25.674Z] Image pipeline finished
+[2025-12-01T21:36:12.987Z] Starting image pipeline
+[2025-12-01T21:36:12.987Z] Processing group GYM
+[2025-12-01T21:36:13.277Z] Supabase table 'supplements' count=667
+[2025-12-01T21:36:13.277Z] Items per page=100
+[2025-12-01T21:36:13.278Z] Total pages=7
+[2025-12-01T21:36:13.278Z] Fetching page index=5, range [500, 599]
+[2025-12-01T21:36:22.778Z] Generated 4 images at /Users/itsector/Documents/GitHub/API-autoSocialForge/IMAGE/output/GYM/2025-12-01T21-36-22-518Z
+[2025-12-01T21:36:22.779Z] Saved /Users/itsector/Documents/GitHub/API-autoSocialForge/IMAGE/output/GYM/2025-12-01T21-36-22-518Z/metadata.json
+[2025-12-01T21:36:23.232Z] Group GYM error: Supabase upload failed: new row violates row-level security policy
+[2025-12-01T21:36:23.233Z] Image pipeline finished
+[2025-12-01T21:38:39.171Z] Starting image pipeline
+[2025-12-01T21:38:39.172Z] Processing group GYM
+[2025-12-01T21:38:39.472Z] Supabase table 'supplements' count=667
+[2025-12-01T21:38:39.473Z] Items per page=100
+[2025-12-01T21:38:39.473Z] Total pages=7
+[2025-12-01T21:38:39.473Z] Fetching page index=1, range [100, 199]
+[2025-12-01T21:38:47.336Z] Generated 4 images at /Users/itsector/Documents/GitHub/API-autoSocialForge/IMAGE/output/GYM/2025-12-01T21-38-47-071Z
+[2025-12-01T21:38:47.337Z] Saved /Users/itsector/Documents/GitHub/API-autoSocialForge/IMAGE/output/GYM/2025-12-01T21-38-47-071Z/metadata.json
+[2025-12-01T21:38:47.813Z] Group GYM error: Supabase upload failed: new row violates row-level security policy
+[2025-12-01T21:38:47.813Z] Image pipeline finished
+[2025-12-01T21:39:29.511Z] Starting image pipeline
+[2025-12-01T21:39:29.511Z] Processing group GYM
+[2025-12-01T21:39:29.840Z] Supabase table 'supplements' count=667
+[2025-12-01T21:39:29.840Z] Items per page=100
+[2025-12-01T21:39:29.841Z] Total pages=7
+[2025-12-01T21:39:29.841Z] Fetching page index=3, range [300, 399]
+[2025-12-01T21:39:38.322Z] Generated 4 images at /Users/itsector/Documents/GitHub/API-autoSocialForge/IMAGE/output/GYM/2025-12-01T21-39-38-060Z
+[2025-12-01T21:39:38.323Z] Saved /Users/itsector/Documents/GitHub/API-autoSocialForge/IMAGE/output/GYM/2025-12-01T21-39-38-060Z/metadata.json
+[2025-12-01T21:39:38.879Z] Group GYM error: Supabase upload failed: new row violates row-level security policy
+[2025-12-01T21:39:38.879Z] Image pipeline finished
+[2025-12-01T21:39:51.212Z] Starting image pipeline
+[2025-12-01T21:39:51.212Z] Processing group GYM
+[2025-12-01T21:39:51.513Z] Supabase table 'supplements' count=667
+[2025-12-01T21:39:51.513Z] Items per page=100
+[2025-12-01T21:39:51.514Z] Total pages=7
+[2025-12-01T21:39:51.514Z] Fetching page index=3, range [300, 399]
+[2025-12-01T21:40:00.369Z] Generated 4 images at /Users/itsector/Documents/GitHub/API-autoSocialForge/IMAGE/output/GYM/2025-12-01T21-40-00-088Z
+[2025-12-01T21:40:00.370Z] Saved /Users/itsector/Documents/GitHub/API-autoSocialForge/IMAGE/output/GYM/2025-12-01T21-40-00-088Z/metadata.json
+[2025-12-01T21:40:00.792Z] Group GYM error: Supabase upload failed: new row violates row-level security policy
+[2025-12-01T21:40:00.792Z] Image pipeline finished
+[2025-12-01T21:40:10.283Z] Starting image pipeline
+[2025-12-01T21:40:10.283Z] Processing group GYM
+[2025-12-01T21:40:10.596Z] Supabase table 'supplements' count=667
+[2025-12-01T21:40:10.596Z] Items per page=100
+[2025-12-01T21:40:10.597Z] Total pages=7
+[2025-12-01T21:40:10.597Z] Fetching page index=3, range [300, 399]
+[2025-12-01T21:40:18.340Z] Generated 4 images at /Users/itsector/Documents/GitHub/API-autoSocialForge/IMAGE/output/GYM/2025-12-01T21-40-18-072Z
+[2025-12-01T21:40:18.341Z] Saved /Users/itsector/Documents/GitHub/API-autoSocialForge/IMAGE/output/GYM/2025-12-01T21-40-18-072Z/metadata.json
+[2025-12-01T21:40:18.992Z] Group GYM error: Supabase upload failed: new row violates row-level security policy
+[2025-12-01T21:40:18.993Z] Image pipeline finished
+[2025-12-01T21:40:31.425Z] Starting image pipeline
+[2025-12-01T21:40:31.425Z] Processing group GYM
+[2025-12-01T21:40:31.737Z] Supabase table 'supplements' count=667
+[2025-12-01T21:40:31.737Z] Items per page=100
+[2025-12-01T21:40:31.737Z] Total pages=7
+[2025-12-01T21:40:31.738Z] Fetching page index=5, range [500, 599]
+[2025-12-01T21:40:40.674Z] Generated 4 images at /Users/itsector/Documents/GitHub/API-autoSocialForge/IMAGE/output/GYM/2025-12-01T21-40-40-418Z
+[2025-12-01T21:40:40.675Z] Saved /Users/itsector/Documents/GitHub/API-autoSocialForge/IMAGE/output/GYM/2025-12-01T21-40-40-418Z/metadata.json
+[2025-12-01T21:40:41.675Z] Group GYM error: Supabase upload failed: new row violates row-level security policy
+[2025-12-01T21:40:41.675Z] Image pipeline finished
+[2025-12-01T21:42:26.029Z] Starting image pipeline
+[2025-12-01T21:42:26.029Z] Processing group GYM
+[2025-12-01T21:42:26.367Z] Supabase table 'supplements' count=667
+[2025-12-01T21:42:26.367Z] Items per page=100
+[2025-12-01T21:42:26.367Z] Total pages=7
+[2025-12-01T21:42:26.367Z] Fetching page index=3, range [300, 399]
+[2025-12-01T21:42:34.996Z] Generated 4 images at /Users/itsector/Documents/GitHub/API-autoSocialForge/IMAGE/output/GYM/2025-12-01T21-42-34-715Z
+[2025-12-01T21:42:34.996Z] Saved /Users/itsector/Documents/GitHub/API-autoSocialForge/IMAGE/output/GYM/2025-12-01T21-42-34-715Z/metadata.json
+[2025-12-01T21:42:35.679Z] Group GYM error: Supabase upload failed: new row violates row-level security policy
+[2025-12-01T21:42:35.679Z] Image pipeline finished
+[2025-12-01T21:43:12.874Z] Starting image pipeline
+[2025-12-01T21:43:12.874Z] Processing group GYM
+[2025-12-01T21:43:13.186Z] Supabase table 'supplements' count=667
+[2025-12-01T21:43:13.186Z] Items per page=100
+[2025-12-01T21:43:13.186Z] Total pages=7
+[2025-12-01T21:43:13.186Z] Fetching page index=6, range [600, 699]
+[2025-12-01T21:43:21.122Z] Generated 4 images at /Users/itsector/Documents/GitHub/API-autoSocialForge/IMAGE/output/GYM/2025-12-01T21-43-20-871Z
+[2025-12-01T21:43:21.123Z] Saved /Users/itsector/Documents/GitHub/API-autoSocialForge/IMAGE/output/GYM/2025-12-01T21-43-20-871Z/metadata.json
+[2025-12-01T21:43:21.659Z] Group GYM error: Supabase upload failed: new row violates row-level security policy
+[2025-12-01T21:43:21.660Z] Image pipeline finished
+[2025-12-01T21:43:31.131Z] Starting image pipeline
+[2025-12-01T21:43:31.131Z] Processing group GYM
+[2025-12-01T21:43:31.359Z] Supabase table 'supplements' count=667
+[2025-12-01T21:43:31.359Z] Items per page=100
+[2025-12-01T21:43:31.359Z] Total pages=7
+[2025-12-01T21:43:31.360Z] Fetching page index=0, range [0, 99]
+[2025-12-01T21:43:39.674Z] Generated 4 images at /Users/itsector/Documents/GitHub/API-autoSocialForge/IMAGE/output/GYM/2025-12-01T21-43-39-399Z
+[2025-12-01T21:43:39.675Z] Saved /Users/itsector/Documents/GitHub/API-autoSocialForge/IMAGE/output/GYM/2025-12-01T21-43-39-399Z/metadata.json
+[2025-12-01T21:43:40.071Z] Group GYM error: Supabase upload failed: new row violates row-level security policy
+[2025-12-01T21:43:40.072Z] Image pipeline finished

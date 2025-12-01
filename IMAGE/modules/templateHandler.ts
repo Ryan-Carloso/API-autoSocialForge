@@ -47,15 +47,19 @@ export function getRenderOptionsFromEnv(): RenderOptions {
   const marginTop = Number(process.env.IMAGE_MARGIN_TOP || defaultHoriz);
   const marginBottom = Number(process.env.IMAGE_MARGIN_BOTTOM || defaultHoriz);
   const letterSpacing = Number(process.env.SPACE_BETWEEN_LETTERS || 0);
+  const fontWeight = Number(process.env.FONT_WEIGHT || 600);
+  const fontStyle = String(process.env.FONT_STYLE || "normal");
+  const paragraphSpacing = Number(process.env.SPACE_BETWEEN_PARAGRAPH || 0);
 
   const defaultFontCandidates = [
-    "/Users/itsector/Documents/GitHub/API-autoSocialForge/IMAGE/FONTS/Roboto-ThinItalic.ttf"
+    path.join(baseDir(), "FONTS", "Roboto-ThinItalic.ttf")
   ];
   let fontFile = defaultFontCandidates.find((f) => !!f && fs.existsSync(f)) || "/Library/Fonts/Arial.ttf";
   if (!fs.existsSync(fontFile)) {
     throw new Error("Font file not found. Set IMAGE_FONT_FILE env to a valid font path.");
   }
-  return { marginLeft, marginRight, fontSize, marginTop, marginBottom, fontFile, textColor, letterSpacing };
+  const fontName = String(process.env.IMAGE_FONT_NAME || "AppFont");
+  return { marginLeft, marginRight, fontSize, marginTop, marginBottom, fontFile, textColor, letterSpacing, fontWeight, fontStyle, fontName, paragraphSpacing };
 }
 
 export function writeLog(message: string): void {

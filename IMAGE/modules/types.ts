@@ -48,4 +48,8 @@ export type RenderOptions = {
   fontFile: string;
   textColor: string;
   letterSpacing: number;
+  fontWeight: number;
+  fontStyle: string;
+  fontName: string;
+  paragraphSpacing: number;
 };

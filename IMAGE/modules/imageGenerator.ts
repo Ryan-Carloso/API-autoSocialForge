@@ -1,7 +1,7 @@
 import ffmpeg from "fluent-ffmpeg";
 import path from "path";
 import fs from "fs";
-import { createCanvas, loadImage, type SKRSContext2D } from "@napi-rs/canvas";
+import { createCanvas, loadImage, GlobalFonts, type SKRSContext2D } from "@napi-rs/canvas";
 import { CarouselContent, RenderOptions } from "./types";
 import { ensureDir } from "./templateHandler";
 
@@ -24,33 +24,44 @@ function wrapText(text: string, maxCharsPerLine: number): string[] {
   return lines;
 }
 
-function computeLinesForSlide(title: string, subtitle: string | undefined, bullets: string[] | undefined, options: RenderOptions, width: number): string[] {
+function computeLinesForSlide(title: string, subtitle: string | undefined, bullets: string[] | undefined, options: RenderOptions, width: number): { lines: string[]; breaks: Set<number> } {
   const availableWidth = width - (options.marginLeft + options.marginRight);
   const approxCharWidth = options.fontSize * 0.6 + options.letterSpacing;
   const maxChars = Math.max(1, Math.floor(availableWidth / approxCharWidth));
   const lines: string[] = [];
-  lines.push(...wrapText(title, maxChars));
-  if (subtitle) lines.push(...wrapText(subtitle, maxChars));
+  const breaks: number[] = [];
+  const titleLines = wrapText(title, maxChars);
+  lines.push(...titleLines);
+  if (titleLines.length > 0) breaks.push(lines.length - 1);
+  if (subtitle) {
+    const subLines = wrapText(subtitle, maxChars);
+    lines.push(...subLines);
+    if (subLines.length > 0) breaks.push(lines.length - 1);
+  }
   if (bullets && bullets.length > 0) {
     for (const b of bullets) {
       const prefixed = `• ${b}`;
-      lines.push(...wrapText(prefixed, maxChars));
+      const bl = wrapText(prefixed, maxChars);
+      lines.push(...bl);
+      if (bl.length > 0) breaks.push(lines.length - 1);
     }
   }
-  return lines;
+  return { lines, breaks: new Set(breaks) };
 }
 
-function buildDrawtextFilters(lines: string[], options: RenderOptions, width: number, height: number): string {
+function buildDrawtextFilters(lines: string[], breaks: Set<number>, options: RenderOptions, width: number, height: number): string {
   const startY = options.marginTop;
   const lineHeight = Math.floor(options.fontSize * 1.1);
   const filters: string[] = [];
   let y = startY;
-  for (const line of lines) {
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
     const escaped = line.replace(/:/g, '\\:').replace(/'/g, "\\'");
     filters.push(
       `drawtext=fontfile='${options.fontFile}':text='${escaped}':x=${options.marginLeft}:y=${y}:fontsize=${options.fontSize}:fontcolor=${options.textColor}:line_spacing=4:spacing=${options.letterSpacing}:box=0`
     );
     y += lineHeight;
+    if (breaks.has(i)) y += options.paragraphSpacing;
     if (y > height - options.marginBottom - lineHeight) break;
   }
   return filters.join(",");
@@ -79,10 +90,15 @@ export async function generateImagesFromCarousel(
 ): Promise<string[]> {
   ensureDir(outputDir);
   const dims = await ffprobeDimensions(templatePath);
+  if (!GlobalFonts.has(options.fontName)) {
+    try {
+      GlobalFonts.registerFromPath(options.fontFile, options.fontName);
+    } catch {}
+  }
   const files: string[] = [];
   for (const slide of carousel.slides) {
-    const lines = computeLinesForSlide(slide.title, slide.subtitle, slide.bullets, options, dims.width);
-    const filter = buildDrawtextFilters(lines, options, dims.width, dims.height);
+    const computed = computeLinesForSlide(slide.title, slide.subtitle, slide.bullets, options, dims.width);
+    const filter = buildDrawtextFilters(computed.lines, computed.breaks, options, dims.width, dims.height);
     const outPath = path.join(outputDir, `photoID${slide.id}.png`);
     try {
       await new Promise<void>((resolve, reject) => {
@@ -106,13 +122,15 @@ export async function generateImagesFromCarousel(
       ctx.fillStyle = options.textColor;
       ctx.textAlign = "left";
       ctx.textBaseline = "top";
-      ctx.font = `bold ${options.fontSize}px sans-serif`;
+      ctx.font = `${options.fontStyle} ${options.fontWeight} ${options.fontSize}px ${options.fontName}`;
       let y = options.marginTop;
 
       const lineHeight = Math.floor(options.fontSize * 1.1);
-      for (const line of lines) {
+      for (let i = 0; i < computed.lines.length; i++) {
+        const line = computed.lines[i];
         drawTextWithSpacing(ctx, line, options.marginLeft, y, options.letterSpacing, width - (options.marginLeft + options.marginRight));
         y += lineHeight;
+        if (computed.breaks.has(i)) y += options.paragraphSpacing;
         if (y > height - options.marginBottom - lineHeight) break;
       }
       const buf = canvas.toBuffer("image/png");
