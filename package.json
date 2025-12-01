@@ -4,7 +4,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev": "tsx src/index.ts"
+    "dev": "tsx src/index.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "image:dev": "tsx IMAGE/index.ts"
   },
   "repository": {
     "type": "git",
@@ -28,7 +30,11 @@
     "@google/generative-ai": "^0.24.1",
     "@napi-rs/canvas": "^0.1.83",
     "@supabase/supabase-js": "^2.46.1",
+    "fluent-ffmpeg": "^2.1.2",
     "dotenv": "^17.2.3",
     "node-fetch": "^3.3.2"
+  },
+  "optionalDependencies": {
+    "@types/fluent-ffmpeg": "^2.1.24"
   }
 }

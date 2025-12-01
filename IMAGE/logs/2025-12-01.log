@@ -1,0 +1,50 @@
+[2025-12-01T20:34:13.313Z] Starting image pipeline
+[2025-12-01T20:34:13.314Z] Image pipeline finished
+[2025-12-01T20:35:35.994Z] Starting image pipeline
+[2025-12-01T20:35:35.995Z] Processing group GYM
+[2025-12-01T20:35:36.060Z] Group GYM error: request to https://example.supabase.co/rest/v1/gym?select=*&apikey=YOUR_PUBLISHABLE_KEY failed, reason: getaddrinfo ENOTFOUND example.supabase.co
+[2025-12-01T20:35:36.060Z] Image pipeline finished
+[2025-12-01T20:38:51.180Z] Starting image pipeline
+[2025-12-01T20:38:51.180Z] Processing group GYM
+[2025-12-01T20:38:51.181Z] Group GYM error: Content path is a URL. Configure CONTENT_TABLE_<GROUP> to use Supabase SDK and avoid HTTP URLs.
+[2025-12-01T20:38:51.181Z] Image pipeline finished
+[2025-12-01T20:40:01.301Z] Starting image pipeline
+[2025-12-01T20:40:01.301Z] Processing group GYM
+[2025-12-01T20:40:01.301Z] Group GYM error: Content path is a URL. Configure CONTENT_TABLE_<GROUP> to use Supabase SDK and avoid HTTP URLs.
+[2025-12-01T20:40:01.301Z] Image pipeline finished
+[2025-12-01T20:44:40.956Z] Starting image pipeline
+[2025-12-01T20:44:40.956Z] Processing group GYM
+[2025-12-01T20:44:42.006Z] Supabase table 'supplements' count=667
+[2025-12-01T20:44:42.006Z] Items per page=10
+[2025-12-01T20:44:42.006Z] Total pages=67
+[2025-12-01T20:44:42.006Z] Fetching page index=60, range [600, 609]
+[2025-12-01T20:44:49.861Z] Group GYM error: Cannot find ffprobe
+[2025-12-01T20:44:49.861Z] Image pipeline finished
+[2025-12-01T20:45:01.534Z] Starting image pipeline
+[2025-12-01T20:45:01.534Z] Processing group GYM
+[2025-12-01T20:45:01.833Z] Supabase table 'supplements' count=667
+[2025-12-01T20:45:01.833Z] Items per page=10
+[2025-12-01T20:45:01.833Z] Total pages=67
+[2025-12-01T20:45:01.833Z] Fetching page index=65, range [650, 659]
+[2025-12-01T20:45:09.199Z] Group GYM error: Cannot find ffmpeg
+[2025-12-01T20:45:09.200Z] Image pipeline finished
+[2025-12-01T20:45:26.084Z] Starting image pipeline
+[2025-12-01T20:45:26.084Z] Processing group GYM
+[2025-12-01T20:45:26.357Z] Supabase table 'supplements' count=667
+[2025-12-01T20:45:26.357Z] Items per page=10
+[2025-12-01T20:45:26.358Z] Total pages=67
+[2025-12-01T20:45:26.358Z] Fetching page index=39, range [390, 399]
+[2025-12-01T20:45:34.420Z] Generated 4 images at /Users/itsector/Documents/GitHub/API-autoSocialForge/IMAGE/output/GYM/2025-12-01T20-45-34-273Z
+[2025-12-01T20:45:34.421Z] Saved /Users/itsector/Documents/GitHub/API-autoSocialForge/IMAGE/output/GYM/2025-12-01T20-45-34-273Z/metadata.json
+[2025-12-01T20:45:34.743Z] Group GYM error: Supabase upload failed: new row violates row-level security policy
+[2025-12-01T20:45:34.744Z] Image pipeline finished
+[2025-12-01T20:47:13.529Z] Starting image pipeline
+[2025-12-01T20:47:13.530Z] Processing group GYM
+[2025-12-01T20:47:14.061Z] Supabase table 'supplements' count=667
+[2025-12-01T20:47:14.061Z] Items per page=100
+[2025-12-01T20:47:14.061Z] Total pages=7
+[2025-12-01T20:47:14.061Z] Fetching page index=6, range [600, 699]
+[2025-12-01T20:47:21.255Z] Generated 3 images at /Users/itsector/Documents/GitHub/API-autoSocialForge/IMAGE/output/GYM/2025-12-01T20-47-21-123Z
+[2025-12-01T20:47:21.256Z] Saved /Users/itsector/Documents/GitHub/API-autoSocialForge/IMAGE/output/GYM/2025-12-01T20-47-21-123Z/metadata.json
+[2025-12-01T20:47:22.217Z] Group GYM error: Supabase upload failed: new row violates row-level security policy
+[2025-12-01T20:47:22.218Z] Image pipeline finished
