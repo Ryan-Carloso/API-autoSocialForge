@@ -96,6 +96,81 @@ export interface VideoScript {
   estimatedSeconds: number;
 }
 
+export interface MultiPartVideoScript {
+  part1: VideoScript;
+  part2: VideoScript;
+}
+
+export async function generateMultiPartVideoScript(content: string): Promise<MultiPartVideoScript> {
+  if (!genAI) {
+    throw new Error("Gemini API Key not configured.");
+  }
+
+  const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash", generationConfig: { responseMimeType: "application/json" } });
+
+  const prompt = `
+    You are a professional video scriptwriter for social media (TikTok/Reels).
+    Analyze the following content and create a TWO-PART video script (Part 1 and Part 2) that are consecutive.
+    
+    Content:
+    ${content}
+    
+    Constraints:
+    1. Production Requirements: Same female presenter, consistent voice, identical location/lighting/framing.
+    2. Technical Specifications: Each segment (Part 1 and Part 2) must be <= 8.00 seconds.
+    3. Content Flow: Part 1 ends mid-explanation at a natural breaking point. Part 2 begins exactly where Part 1 concluded.
+    4. Pacing: High energy, 1.5x speaking speed.
+    
+    Output JSON format:
+    {
+      "part1": {
+        "scriptText": "Spoken words for Part 1...",
+        "visualPrompt": "Detailed visual description for Part 1...",
+        "estimatedSeconds": 8
+      },
+      "part2": {
+        "scriptText": "Spoken words for Part 2...",
+        "visualPrompt": "Detailed visual description for Part 2 (MUST match Part 1's setting/character EXACTLY)...",
+        "estimatedSeconds": 8
+      }
+    }
+    
+    For the visualPrompt (Use IDENTICAL prompt for both parts to ensure consistency):
+    - Describe a fit 23-year-old blonde woman speaking to the camera.
+    - Setting: Modern gym, electric blue/neon purple lighting.
+    - Style: High energy, fast cuts, dynamic motion.
+    - IMPORTANT: Do NOT include any iPhone mockups or UI elements.
+    - IMPORTANT: Include a text overlay instruction for "remindergym.com" to appear subtly.
+  `;
+
+  let jsonText = "";
+  try {
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    jsonText = response.text().trim();
+    
+    // Remove Markdown code blocks if present
+    jsonText = jsonText.replace(/```json/g, "").replace(/```/g, "").trim();
+    
+    const parsed = JSON.parse(jsonText) as MultiPartVideoScript;
+    
+    // Validate structure
+    if (!parsed.part1 || !parsed.part2) {
+        throw new Error("Invalid JSON structure: Missing part1 or part2");
+    }
+    
+    console.log(`Generated Multi-Part Video Script.`);
+    console.log(`Part 1 (${parsed.part1.estimatedSeconds}s):`, parsed.part1.scriptText);
+    console.log(`Part 2 (${parsed.part2.estimatedSeconds}s):`, parsed.part2.scriptText);
+    
+    return parsed;
+  } catch (error) {
+    console.error("Gemini multi-part script generation failed:", error);
+    console.log("Raw JSON text was:", jsonText);
+    throw error;
+  }
+}
+
 export async function generateVideoScript(content: string): Promise<VideoScript> {
   if (!genAI) {
     throw new Error("Gemini API Key not configured.");
@@ -195,7 +270,7 @@ export async function generateVideo(script: VideoScript): Promise<Buffer> {
 
   try {
     let operation = await googleGenAI.models.generateVideos({
-      model: "veo-3.1-generate-preview",
+      model: "models/veo-2.0-generate-001",
       prompt: prompt,
     });
 

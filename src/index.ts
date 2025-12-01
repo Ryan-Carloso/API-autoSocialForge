@@ -1,40 +1,45 @@
 import fetch from "node-fetch";
 import config from "./config";
 import { supabase } from "../supabase/supabase.init";
-import { generateCaption, generateVideo, generateVideoScript } from "./services/gemini";
+import { generateCaption, generateVideo, generateVideoScript, generateMultiPartVideoScript } from "./services/gemini";
 import path from "path";
 import fs from "fs";
 
 const POSTBRIDGE_TOKEN = config.postbridgeToken;
 
 // Helper to post to bridge
-async function postToBridge(caption: string, mediaBuffer: Buffer, mimeType: string, accountIds: number[]): Promise<{ mediaUrl: string; response: any }> {
+async function postToBridge(caption: string, mediaBuffers: Buffer[], mimeType: string, accountIds: number[], metadata?: any): Promise<{ mediaUrls: string[]; response: any }> {
   // If in DEV mode, save locally to verify image content
   if (config.isDev) {
     const devDir = path.join(process.cwd(), "dev_output");
     if (!fs.existsSync(devDir)) {
       fs.mkdirSync(devDir, { recursive: true });
     }
-    const ext = mimeType.split("/")[1] || "bin";
-    const localFilename = `dev_post_${Date.now()}.${ext}`;
-    const localPath = path.join(devDir, localFilename);
-    fs.writeFileSync(localPath, mediaBuffer);
-    console.log(`[DEV] Saved generated media to: ${localPath}`);
+    
+    mediaBuffers.forEach((buffer, index) => {
+        const ext = mimeType.split("/")[1] || "bin";
+        const localFilename = `dev_post_part${index + 1}_${Date.now()}.${ext}`;
+        const localPath = path.join(devDir, localFilename);
+        fs.writeFileSync(localPath, buffer);
+        console.log(`[DEV] Saved generated media Part ${index + 1} to: ${localPath}`);
+    });
   }
 
-  let mediaUrl = "";
+  let mediaUrls: string[] = [];
   if (supabase) {
-    const ext = mimeType.split("/")[1] || "bin";
-    const filename = `${config.supabaseFolder}${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-    const upload = await supabase.storage.from(config.supabaseBucket).upload(filename, mediaBuffer, {
-      contentType: mimeType,
-      upsert: true,
-    });
-    if (upload.error) {
-      throw new Error(`Supabase upload failed: ${upload.error.message}`);
+    for (const buffer of mediaBuffers) {
+        const ext = mimeType.split("/")[1] || "bin";
+        const filename = `${config.supabaseFolder}${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+        const upload = await supabase.storage.from(config.supabaseBucket).upload(filename, buffer, {
+          contentType: mimeType,
+          upsert: true,
+        });
+        if (upload.error) {
+          throw new Error(`Supabase upload failed: ${upload.error.message}`);
+        }
+        const pub = supabase.storage.from(config.supabaseBucket).getPublicUrl(filename);
+        mediaUrls.push(pub.data.publicUrl);
     }
-    const pub = supabase.storage.from(config.supabaseBucket).getPublicUrl(filename);
-    mediaUrl = pub.data.publicUrl;
   } else {
     throw new Error("Supabase client not initialized");
   }
@@ -47,13 +52,14 @@ async function postToBridge(caption: string, mediaBuffer: Buffer, mimeType: stri
     },
     body: JSON.stringify({
       caption,
-      media_urls: [mediaUrl],
+      media_urls: mediaUrls,
       social_accounts: accountIds,
       is_draft: config.isDev,
+      metadata: metadata || {},
     }),
   });
   const data = await resp.json();
-  return { mediaUrl, response: data };
+  return { mediaUrls, response: data };
 }
 
 // Main startup logic
@@ -142,26 +148,39 @@ async function runStartup() {
 
     // 3. Generate Content (AI or Fallback)
     let caption = shortTitle;
-    let mediaBuffer: Buffer | null = null;
+    let mediaBuffers: Buffer[] = [];
     let mimeType = "video/mp4";
+    let metadata: any = {};
 
     if (config.geminiKey) {
       console.log("Gemini Key found. Generating AI content...");
       try {
-        // 1. Generate Optimized Script first
-        console.log("Generating video script...");
-        const script = await generateVideoScript(topicPrompt);
+        // 1. Generate Optimized Script first (Multi-Part)
+        console.log("Generating multi-part video script...");
+        const multiScript = await generateMultiPartVideoScript(topicPrompt);
         
+        metadata = {
+            merge_segments: true,
+            segment_count: 2,
+            segments: [
+                { part: 1, duration_est: multiScript.part1.estimatedSeconds },
+                { part: 2, duration_est: multiScript.part2.estimatedSeconds }
+            ]
+        };
+
         // 2. Generate Video & Caption sequentially to avoid overload
         console.log("Generating caption...");
         const genCaption = await generateCaption(topicPrompt);
         
-        console.log("Generating video...");
-        const videoData = await generateVideo(script);
+        console.log("Generating video Part 1...");
+        const videoData1 = await generateVideo(multiScript.part1);
+        
+        console.log("Generating video Part 2...");
+        const videoData2 = await generateVideo(multiScript.part2);
 
         caption = genCaption;
-        mediaBuffer = videoData;
-        console.log("AI Generation successful. Video size:", mediaBuffer.length);
+        mediaBuffers = [videoData1, videoData2];
+        console.log("AI Generation successful. Video parts:", mediaBuffers.length);
       } catch (error: any) {
         console.error("AI Generation failed:", error.message);
       }
@@ -169,7 +188,7 @@ async function runStartup() {
       console.log("No Gemini Key. Skipping generation.");
     }
 
-    if (!mediaBuffer) {
+    if (mediaBuffers.length === 0) {
         console.error("No media generated. Skipping post.");
         continue;
     }
@@ -177,9 +196,9 @@ async function runStartup() {
     // 4. Post
     try {
       console.log("Posting to Bridge...");
-      const result = await postToBridge(caption, mediaBuffer, mimeType, group.accountIds);
+      const result = await postToBridge(caption, mediaBuffers, mimeType, group.accountIds, metadata);
       console.log("Post successful!", {
-        mediaUrl: result.mediaUrl,
+        mediaUrls: result.mediaUrls,
         response: result.response
       });
     } catch (error: any) {
