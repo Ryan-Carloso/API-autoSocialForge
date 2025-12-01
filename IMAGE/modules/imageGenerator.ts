@@ -1,7 +1,7 @@
 import ffmpeg from "fluent-ffmpeg";
 import path from "path";
 import fs from "fs";
-import { createCanvas, loadImage } from "@napi-rs/canvas";
+import { createCanvas, loadImage, type SKRSContext2D } from "@napi-rs/canvas";
 import { CarouselContent, RenderOptions } from "./types";
 import { ensureDir } from "./templateHandler";
 
@@ -25,8 +25,8 @@ function wrapText(text: string, maxCharsPerLine: number): string[] {
 }
 
 function computeLinesForSlide(title: string, subtitle: string | undefined, bullets: string[] | undefined, options: RenderOptions, width: number): string[] {
-  const availableWidth = width - options.margin * 2;
-  const approxCharWidth = options.fontSize * 0.6;
+  const availableWidth = width - (options.marginLeft + options.marginRight);
+  const approxCharWidth = options.fontSize * 0.6 + options.letterSpacing;
   const maxChars = Math.max(1, Math.floor(availableWidth / approxCharWidth));
   const lines: string[] = [];
   lines.push(...wrapText(title, maxChars));
@@ -41,17 +41,17 @@ function computeLinesForSlide(title: string, subtitle: string | undefined, bulle
 }
 
 function buildDrawtextFilters(lines: string[], options: RenderOptions, width: number, height: number): string {
-  const startY = options.margin;
+  const startY = options.marginTop;
   const lineHeight = Math.floor(options.fontSize * 1.1);
   const filters: string[] = [];
   let y = startY;
   for (const line of lines) {
     const escaped = line.replace(/:/g, '\\:').replace(/'/g, "\\'");
     filters.push(
-      `drawtext=fontfile='${options.fontFile}':text='${escaped}':x=${options.margin}:y=${y}:fontsize=${options.fontSize}:fontcolor=${options.textColor}:line_spacing=4:box=0`
+      `drawtext=fontfile='${options.fontFile}':text='${escaped}':x=${options.marginLeft}:y=${y}:fontsize=${options.fontSize}:fontcolor=${options.textColor}:line_spacing=4:spacing=${options.letterSpacing}:box=0`
     );
     y += lineHeight;
-    if (y > height - options.margin - lineHeight) break;
+    if (y > height - options.marginBottom - lineHeight) break;
   }
   return filters.join(",");
 }
@@ -107,12 +107,13 @@ export async function generateImagesFromCarousel(
       ctx.textAlign = "left";
       ctx.textBaseline = "top";
       ctx.font = `bold ${options.fontSize}px sans-serif`;
-      let y = options.margin;
+      let y = options.marginTop;
+
       const lineHeight = Math.floor(options.fontSize * 1.1);
       for (const line of lines) {
-        ctx.fillText(line, options.margin, y, width - options.margin * 2);
+        drawTextWithSpacing(ctx, line, options.marginLeft, y, options.letterSpacing, width - (options.marginLeft + options.marginRight));
         y += lineHeight;
-        if (y > height - options.margin - lineHeight) break;
+        if (y > height - options.marginBottom - lineHeight) break;
       }
       const buf = canvas.toBuffer("image/png");
       fs.writeFileSync(outPath, buf);
@@ -120,4 +121,25 @@ export async function generateImagesFromCarousel(
     files.push(outPath);
   }
   return files;
+}
+
+function drawTextWithSpacing(
+  ctx: SKRSContext2D,
+  text: string,
+  x: number,
+  y: number,
+  letterSpacing: number,
+  maxWidth: number
+) {
+  if (!letterSpacing || letterSpacing === 0) {
+    ctx.fillText(text, x, y, maxWidth);
+    return;
+  }
+  let cursor = x;
+  for (const ch of text) {
+    ctx.fillText(ch, cursor, y);
+    const w = ctx.measureText(ch).width;
+    cursor += w + letterSpacing;
+    if (cursor - x > maxWidth) break;
+  }
 }

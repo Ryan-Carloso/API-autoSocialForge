@@ -3,7 +3,7 @@ import fs from "fs";
 import { RenderOptions } from "./types";
 
 function baseDir(): string {
-  return path.resolve("/Users/itsector/Documents/GitHub/API-autoSocialForge/IMAGE");
+  return path.resolve("IMAGE");
 }
 
 export function ensureDir(dir: string): void {
@@ -35,20 +35,27 @@ export function getOutputDir(group: string): string {
 }
 
 export function getRenderOptionsFromEnv(): RenderOptions {
-  const margin = Number(process.env.IMAGE_MARGIN || 20);
+  const defaultHoriz = Number(process.env.IMAGE_MARGIN_HORIZONTAL || 20);
+  const marginLeft = Number(
+    process.env.IMAGEM_MARGIM_LEFT ?? process.env.IMAGE_MARGIN_LEFT ?? defaultHoriz
+  );
+  const marginRight = Number(
+    process.env.IMAGEM_MARGIM_RIGHT ?? process.env.IMAGE_MARGIN_RIGHT ?? defaultHoriz
+  );
   const fontSize = Number(process.env.IMAGE_FONT_SIZE || 100);
   const textColor = String(process.env.IMAGE_TEXT_COLOR || "#ffffff");
+  const marginTop = Number(process.env.IMAGE_MARGIN_TOP || defaultHoriz);
+  const marginBottom = Number(process.env.IMAGE_MARGIN_BOTTOM || defaultHoriz);
+  const letterSpacing = Number(process.env.SPACE_BETWEEN_LETTERS || 0);
+
   const defaultFontCandidates = [
-    String(process.env.IMAGE_FONT_FILE || ""),
-    "/System/Library/Fonts/SFNS.ttf",
-    "/Library/Fonts/Arial.ttf",
-    "/Library/Fonts/Helvetica.ttc",
+    "/Users/itsector/Documents/GitHub/API-autoSocialForge/IMAGE/FONTS/Roboto-ThinItalic.ttf"
   ];
   let fontFile = defaultFontCandidates.find((f) => !!f && fs.existsSync(f)) || "/Library/Fonts/Arial.ttf";
   if (!fs.existsSync(fontFile)) {
     throw new Error("Font file not found. Set IMAGE_FONT_FILE env to a valid font path.");
   }
-  return { margin, fontSize, fontFile, textColor };
+  return { marginLeft, marginRight, fontSize, marginTop, marginBottom, fontFile, textColor, letterSpacing };
 }
 
 export function writeLog(message: string): void {
@@ -65,4 +72,3 @@ export function writeJson(dir: string, filename: string, data: unknown): string 
   fs.writeFileSync(p, JSON.stringify(data, null, 2));
   return p;
 }
-

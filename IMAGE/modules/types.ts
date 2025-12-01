@@ -40,9 +40,12 @@ export type GeneratedResult = {
 };
 
 export type RenderOptions = {
-  margin: number;
+  marginLeft: number;
+  marginRight: number;
   fontSize: number;
+  marginTop: number;
+  marginBottom: number;
   fontFile: string;
   textColor: string;
+  letterSpacing: number;
 };
-
