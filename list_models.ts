@@ -1,5 +1,5 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import config from "./src/config";
+import config from "./IMAGE/config";
 
 async function main() {
   let url = "https://generativelanguage.googleapis.com/v1beta/models?key=" + config.geminiKey;

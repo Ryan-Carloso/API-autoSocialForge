@@ -1,6 +1,6 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import path from "path";
-import config from "../../src/config";
+import config from "../config";
 import { CarouselContent } from "./types";
 import { ensureDir, getLogsDir, writeJson } from "./templateHandler";
 

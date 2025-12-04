@@ -1,6 +1,7 @@
 import path from "path";
 import fs from "fs";
 import { RenderOptions } from "./types";
+import { styles } from "../configStyle";
 
 function baseDir(): string {
   return path.resolve("IMAGE");
@@ -42,14 +43,14 @@ export function getRenderOptionsFromEnv(): RenderOptions {
   const marginRight = Number(
     process.env.IMAGEM_MARGIM_RIGHT ?? process.env.IMAGE_MARGIN_RIGHT ?? defaultHoriz
   );
-  const fontSize = Number(process.env.IMAGE_FONT_SIZE || 100);
-  const textColor = String(process.env.IMAGE_TEXT_COLOR || "#ffffff");
-  const marginTop = Number(process.env.IMAGE_MARGIN_TOP || defaultHoriz);
-  const marginBottom = Number(process.env.IMAGE_MARGIN_BOTTOM || defaultHoriz);
-  const letterSpacing = Number(process.env.SPACE_BETWEEN_LETTERS || 0);
-  const fontWeight = Number(process.env.FONT_WEIGHT || 600);
-  const fontStyle = String(process.env.FONT_STYLE || "normal");
-  const paragraphSpacing = Number(process.env.SPACE_BETWEEN_PARAGRAPH || 0);
+  const fontSize = styles.IMAGE_FONT_SIZE;
+  const textColor = styles.IMAGE_TEXT_COLOR;
+  const marginTop = styles.IMAGE_MARGIN_TOP;
+  const marginBottom = styles.IMAGE_MARGIN_BOTTOM;
+  const letterSpacing = styles.SPACE_BETWEEN_LETTERS;
+  const fontWeight = styles.FONT_WEIGHT;
+  const fontStyle = styles.FONT_STYLE;
+  const paragraphSpacing = styles.SPACE_BETWEEN_PARAGRAPH;
 
   const defaultFontCandidates = [
     path.join(baseDir(), "FONTS", "Roboto-ThinItalic.ttf")

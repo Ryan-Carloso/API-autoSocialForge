@@ -1,8 +1,8 @@
 import path from "path";
 import fs from "fs";
-import config from "../src/config";
-import { supabase } from "../supabase/supabase.init";
-import { GroupConfig, SelectedItem, CarouselContent, GeneratedResult } from "./modules/types";
+import config from "./config.ts";
+import { supabase } from "../supabase/supabase.init.ts";
+import { GroupConfig, SelectedItem, CarouselContent, GeneratedResult } from "./modules/types.ts";
 import { getSelectedItem, itemToPrompt } from "./modules/contentProcessor";
 import { generateCarouselWithLog } from "./modules/geminiClient";
 import { getTemplatePath, getRenderOptionsFromEnv, getOutputDir, writeLog } from "./modules/templateHandler";
