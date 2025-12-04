@@ -69,6 +69,9 @@ if (groupConfigs.length === 0) {
 export default {
   port,
   postbridgeToken,
+  postbridgeUrl: process.env.POSTBRIDGE_URL || process.env.POSTBRIDGE_API_URL,
+  postbridgePostsUrl: process.env.POSTBRIDGE_POSTS_URL || "https://api.post-bridge.com/v1/posts",
+  postbridgeUploadUrl: process.env.POSTBRIDGE_UPLOAD_URL || "https://api.post-bridge.com/v1/media/create-upload-url",
   supabaseUrl: getEnv("SUPABASE_URL"),
   supabaseKey: getEnv("SUPABASE_KEY"),
   supabaseBucket: getEnv("SUPABASE_BUCKET"),

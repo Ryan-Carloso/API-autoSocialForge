@@ -1,5 +1,6 @@
 import path from "path";
 import fs from "fs";
+import fetch from "node-fetch";
 import config from "./config.ts";
 import { supabase } from "../supabase/supabase.init.ts";
 import { GroupConfig, SelectedItem, CarouselContent, GeneratedResult } from "./modules/types.ts";
@@ -7,6 +8,7 @@ import { getSelectedItem, itemToPrompt } from "./modules/contentProcessor";
 import { generateCarouselWithLog } from "./modules/geminiClient";
 import { getTemplatePath, getRenderOptionsFromEnv, getOutputDir, writeLog } from "./modules/templateHandler";
 import { generateImagesFromCarousel } from "./modules/imageGenerator";
+import { generateCaption } from "./modules/gemini.ts";
 
 function readBuffers(files: string[]): Buffer[] {
   return files.map((f) => fs.readFileSync(f));
@@ -27,33 +29,121 @@ function saveMetadata(
     outputDir,
     filenames,
   };
-  const metaPath = path.join(outputDir, "metadata.json");
-  fs.writeFileSync(metaPath, JSON.stringify(metadata, null, 2));
-  writeLog(`Saved ${metaPath}`);
   return { images: filenames.map((n) => path.join(outputDir, n)), metadata };
 }
 
-async function uploadToSupabase(result: GeneratedResult): Promise<void> {
-  const bucket = config.supabaseBucket;
+function buildStoragePath(outputDir: string, group: string, filename: string): string {
   const folder = config.supabaseFolder.endsWith("/") ? config.supabaseFolder : `${config.supabaseFolder}/`;
+  return `${folder}${group}/${path.basename(outputDir)}/${filename}`;
+}
+
+async function uploadToSupabase(result: GeneratedResult): Promise<string[]> {
+  const bucket = config.supabaseBucket;
+  const storagePaths: string[] = [];
   for (let i = 0; i < result.metadata.filenames.length; i++) {
     const fullPath = path.join(result.metadata.outputDir, result.metadata.filenames[i]);
-    const fname = `${folder}${result.metadata.group}/${path.basename(result.metadata.outputDir)}/${result.metadata.filenames[i]}`;
+    const fname = buildStoragePath(result.metadata.outputDir, result.metadata.group, result.metadata.filenames[i]);
     const fileBuf = fs.readFileSync(fullPath);
     const up = await supabase.storage.from(bucket).upload(fname, fileBuf, {
       contentType: "image/png",
       upsert: true,
     });
     if (up.error) throw new Error(`Supabase upload failed: ${up.error.message}`);
+    storagePaths.push(fname);
     writeLog(`Uploaded ${fname}`);
   }
-  const metaName = `${folder}${result.metadata.group}/${path.basename(result.metadata.outputDir)}/metadata.json`;
-  const upMeta = await supabase.storage.from(bucket).upload(metaName, Buffer.from(JSON.stringify(result.metadata, null, 2)), {
-    contentType: "application/json",
-    upsert: true,
+  return storagePaths;
+}
+
+async function getSignedUrls(paths: string[]): Promise<string[]> {
+  const bucket = config.supabaseBucket;
+  const out: string[] = [];
+  for (const p of paths) {
+    const signed = await supabase.storage.from(bucket).createSignedUrl(p, 3600);
+    if (signed.error) throw new Error(`Supabase signed URL error: ${signed.error.message}`);
+    out.push(signed.data.signedUrl);
+  }
+  return out;
+}
+
+function uploadsEndpoint(): string {
+  return config.postbridgeUploadUrl;
+}
+
+function postsEndpoint(): string {
+  return config.postbridgePostsUrl;
+}
+
+async function uploadImagesToPostBridge(result: GeneratedResult): Promise<string[]> {
+  if (!config.postbridgeToken || !config.postbridgeUrl) return [];
+  const ids: string[] = [];
+  for (const fname of result.metadata.filenames) {
+    const fullPath = path.join(result.metadata.outputDir, fname);
+    const stat = fs.statSync(fullPath);
+    const req = await fetch(uploadsEndpoint(), {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${config.postbridgeToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ name: fname, mime_type: "image/png", size_bytes: stat.size }),
+    });
+    if (!req.ok) {
+      const t = await req.text();
+      throw new Error(`PostBridge upload URL error ${req.status}: ${t}`);
+    }
+    const { media_id, upload_url } = (await req.json()) as { media_id: string; upload_url: string };
+    const fileBuf = fs.readFileSync(fullPath);
+    const put = await fetch(upload_url, {
+      method: "PUT",
+      headers: { "Content-Type": "image/png" },
+      body: fileBuf,
+    });
+    if (!put.ok) {
+      const t = await put.text();
+      throw new Error(`PostBridge media upload error ${put.status}: ${t}`);
+    }
+    ids.push(media_id);
+    writeLog(`PostBridge media uploaded: ${fname} -> ${media_id}`);
+  }
+  return ids;
+}
+
+async function postToPostBridge(group: GroupConfig, caption: string, mediaIds: string[], metadata: GeneratedResult["metadata"]): Promise<void> {
+  if (!config.postbridgeToken || !config.postbridgeUrl) {
+    writeLog("PostBridge configuration missing; skipping post");
+    return;
+  }
+  const body = {
+    social_accounts: group.accountIds,
+    caption,
+    media: mediaIds,
+    is_draft: config.isDev ? true : false,
+    scheduled_at: null,
+  };
+  const resp = await fetch(postsEndpoint(), {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${config.postbridgeToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
   });
-  if (upMeta.error) throw new Error(`Supabase upload failed: ${upMeta.error.message}`);
-  writeLog(`Uploaded ${metaName}`);
+  if (!resp.ok) {
+    const text = await resp.text();
+    throw new Error(`PostBridge error ${resp.status}: ${text}`);
+  }
+  let data: unknown = null;
+  try {
+    data = await resp.json();
+  } catch {}
+  if (data) {
+    writeLog(`PostBridge success: ${JSON.stringify(data)}`);
+    const d = data as Record<string, unknown>;
+    const sched = (d.scheduled_at || (d as any).schedule || (d as any).scheduledAt) as string | undefined;
+    if (sched) writeLog(`PostBridge scheduled at: ${sched}`);
+  }
+  writeLog(`Posted to PostBridge for group ${metadata.group}`);
 }
 
 export async function runImagePipeline(): Promise<void> {
@@ -70,7 +160,10 @@ export async function runImagePipeline(): Promise<void> {
       const files = await generateImagesFromCarousel(templatePath, carousel, options, outputDir);
       writeLog(`Generated ${files.length} images at ${outputDir}`);
       const result = saveMetadata(group.name, selected, carousel, outputDir);
-      await uploadToSupabase(result);
+      const storagePaths = await uploadToSupabase(result);
+      const mediaIds = await uploadImagesToPostBridge(result);
+      const caption = await generateCaption(prompt);
+      await postToPostBridge(group, caption, mediaIds, result.metadata);
       writeLog(`Completed group ${group.name}`);
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
