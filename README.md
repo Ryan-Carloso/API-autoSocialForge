@@ -5,7 +5,7 @@ Automated social media posting bridge that generates content (via Gemini AI or r
 ## Features
 
 - **Multi-Group Support**: Configure different account groups (e.g., Football, Gym) with separate content sources.
-- **AI Content Generation**: Uses Google Gemini API to generate captions and image text overlays based on topics.
+- **AI Content Generation**: Uses Google Gemini API or OpenAI (GPT-4o) to generate captions and image text overlays based on topics.
 - **Hybrid Content (Image/Video)**:
   - **Smart Conversion**: Randomly decides (50/50 chance) whether a post will be a carousel of **Static Images** or **Silent Videos** (5-second clips).
   - **Batch Consistency**: Ensures each carousel is either *all* videos or *all* images for a consistent viewer experience.
@@ -21,7 +21,7 @@ Automated social media posting bridge that generates content (via Gemini AI or r
 ### 1. Prerequisites
 - Node.js installed
 - A Supabase project (Storage bucket required)
-- Google Gemini API Key
+- Google Gemini API Key OR OpenAI API Key
 - PostBridge API Key
 - `ffmpeg` installed (handled automatically via npm packages, but ensure system compatibility)
 
@@ -43,7 +43,8 @@ cp .example.env .env
 
 Open `.env` and fill in your credentials:
 
-- **API Keys**: `API_KEY_POSTBRIDGE`, `GEMINI_API_KEY`
+- **API Keys**: `API_KEY_POSTBRIDGE`
+- **AI Provider**: Set `AI_PROVIDER=openai` (and add `OPENAI_API_KEY`) or `AI_PROVIDER=gemini` (and add `GEMINI_API_KEY`).
 - **Supabase**: `SUPABASE_URL`, `SUPABASE_KEY`, `SUPABASE_BUCKET`
 - **Groups**: Define your account groups and content paths.
 - **Content Paths**: Can be a local file path (TypeScript) OR a remote URL (returning JSON).

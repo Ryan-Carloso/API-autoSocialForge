@@ -5,10 +5,9 @@ import config from "./config.ts";
 import { supabase } from "../supabase/supabase.init.ts";
 import { GroupConfig, SelectedItem, CarouselContent, GeneratedResult } from "./modules/types.ts";
 import { getSelectedItem, itemToPrompt } from "./modules/contentProcessor";
-import { generateCarouselWithLog } from "./modules/geminiClient";
+import { generateCarousel, generateCaption } from "./modules/aiService";
 import { getTemplatePath, getRenderOptionsFromEnv, getOutputDir, writeLog } from "./modules/templateHandler";
 import { generateImagesFromCarousel } from "./modules/imageGenerator";
-import { generateCaption } from "./modules/gemini.ts";
 import { convertImageToVideo } from "./modules/videoConverter.ts";
 
 function saveMetadata(
@@ -164,10 +163,17 @@ export async function runImagePipeline(): Promise<void> {
     for (let i = 0; i < config.postHours.length; i++) {
       const hour = config.postHours[i];
       try {
+        writeLog(`\n____________________\nDEBUG HORARIO: ${hour}\n____________________`);
         writeLog(`Starting generation for schedule hour: ${hour} [Type: ${isVideoBatch ? "VIDEO" : "IMAGE"}]`);
         const selected: SelectedItem = await getSelectedItem(group);
         const prompt = itemToPrompt(selected);
-        const carousel: CarouselContent = await generateCarouselWithLog(prompt);
+        
+        // 2. Generate Carousel Content (Slides + Theme)
+        writeLog(`Generating content via AI...`);
+        const carousel: CarouselContent = await generateCarousel(prompt);
+        
+        // 3. Generate Images
+        writeLog(`Generating images...`);
         const templatePath = getTemplatePath();
         const options = getRenderOptionsFromEnv();
         const outputDir = getOutputDir(group.name);
@@ -213,14 +219,12 @@ export async function runImagePipeline(): Promise<void> {
         await postToPostBridge(group, caption, mediaIds, result.metadata, scheduledAt);
         writeLog(`Completed group ${group.name} for hour ${hour}`);
         
-        // Cleanup: Delete local files if running in Production (not Dev)
-        if (!config.isDev) {
-          try {
-            writeLog(`[CLEANUP] Deleting local output directory: ${outputDir}`);
-            fs.rmSync(outputDir, { recursive: true, force: true });
-          } catch (cleanupErr) {
-            writeLog(`[CLEANUP ERROR] Failed to delete ${outputDir}: ${cleanupErr}`);
-          }
+        // Cleanup: Delete local files (Always, to save space)
+        try {
+          writeLog(`[CLEANUP] Deleting local output directory: ${outputDir}`);
+          fs.rmSync(outputDir, { recursive: true, force: true });
+        } catch (cleanupErr) {
+          writeLog(`[CLEANUP ERROR] Failed to delete ${outputDir}: ${cleanupErr}`);
         }
 
         if (i < config.postHours.length - 1) {
@@ -230,6 +234,7 @@ export async function runImagePipeline(): Promise<void> {
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
         writeLog(`Group ${group.name} hour ${hour} error: ${msg}`);
+        break;
       }
     }
   }
@@ -237,5 +242,13 @@ export async function runImagePipeline(): Promise<void> {
 }
 
 if (require.main === module) {
-  runImagePipeline().catch(() => process.exit(1));
+  runImagePipeline()
+    .then(() => {
+      writeLog("Process completed successfully.");
+      process.exit(0);
+    })
+    .catch((err) => {
+      console.error(err);
+      process.exit(1);
+    });
 }
