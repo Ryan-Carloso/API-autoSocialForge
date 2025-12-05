@@ -8,7 +8,7 @@ ffmpeg.setFfmpegPath(ffmpegInstaller.path);
 ffmpeg.setFfprobePath(ffprobeInstaller.path);
 
 /**
- * Converts a single image into a silent 0.5 second video.
+ * Converts a single image into a silent 5 second video.
  * @param imagePath Absolute path to the source image (PNG/JPG)
  * @returns Promise resolving to the absolute path of the generated MP4 video
  */

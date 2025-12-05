@@ -6,9 +6,19 @@ import { writeLog } from "./templateHandler";
 
 async function loadContentFromPath(group: GroupConfig): Promise<unknown[]> {
   if (group.contentPath.startsWith("http")) {
-    throw new Error(
-      "Content path is a URL. Configure CONTENT_TABLE_<GROUP> to use Supabase SDK and avoid HTTP URLs."
-    );
+    try {
+      writeLog(`Fetching content from URL: ${group.contentPath}`);
+      const resp = await fetch(group.contentPath);
+      if (!resp.ok) {
+        throw new Error(`Content fetch failed: ${resp.status} ${resp.statusText}`);
+      }
+      const data = await resp.json();
+      if (Array.isArray(data)) return data as unknown[];
+      throw new Error("URL response is not an array");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      throw new Error(`Failed to load content from URL: ${msg}`);
+    }
   }
   const importPath = path.resolve(process.cwd(), group.contentPath);
   const mod = await import(importPath);
