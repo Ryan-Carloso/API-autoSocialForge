@@ -36,13 +36,8 @@ export function getOutputDir(group: string): string {
 }
 
 export function getRenderOptionsFromEnv(): RenderOptions {
-  const defaultHoriz = Number(process.env.IMAGE_MARGIN_HORIZONTAL || 20);
-  const marginLeft = Number(
-    process.env.IMAGEM_MARGIM_LEFT ?? process.env.IMAGE_MARGIN_LEFT ?? defaultHoriz
-  );
-  const marginRight = Number(
-    process.env.IMAGEM_MARGIM_RIGHT ?? process.env.IMAGE_MARGIN_RIGHT ?? defaultHoriz
-  );
+  const marginLeft = styles.IMAGEM_MARGIM_LEFT 
+  const marginRight = styles.IMAGEM_MARGIM_RIGHT 
   const fontSize = styles.IMAGE_FONT_SIZE;
   const textColor = styles.IMAGE_TEXT_COLOR;
   const marginTop = styles.IMAGE_MARGIN_TOP;

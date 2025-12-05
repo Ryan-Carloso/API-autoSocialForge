@@ -20,9 +20,9 @@ export async function convertImageToVideo(imagePath: string): Promise<string> {
 
   return new Promise((resolve, reject) => {
     ffmpeg(imagePath)
-      .loop(0.5) // Input looping
+      .loop(5) // Input looping
       .outputOptions([
-        "-t 0.5",            // Total duration
+        "-t 5",            // Total duration
         "-c:v libx264",      // Video codec
         "-pix_fmt yuv420p",  // Pixel format for compatibility
         "-r 30",             // Frame rate

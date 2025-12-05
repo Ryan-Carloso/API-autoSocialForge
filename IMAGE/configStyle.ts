@@ -8,8 +8,8 @@ export const styles = {
   IMAGE_MARGIN_BOTTOM: 50,
   SPACE_BETWEEN_LETTERS: 4,
   SPACE_BETWEEN_PARAGRAPH: 15,
-  FONT_WEIGHT: 500,
-  FONT_STYLE: "normal",
+  FONT_WEIGHT: 600,
+  FONT_STYLE: "bold",
   IMAGE_FONT_NAME: "Roboto-Medium.ttf",
   IMAGE_FONT_FILE: "FONTS/Roboto-Medium.ttf"
 }
