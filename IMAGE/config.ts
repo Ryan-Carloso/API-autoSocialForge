@@ -17,6 +17,7 @@ const isDev = process.env.IS_DEV === "true";
 const port = Number(getEnv("PORT"));
 const postbridgeToken = getEnv("API_KEY_POSTBRIDGE");
 const geminiKey = process.env.GEMINI_API_KEY; // Optional now
+const postHours = [ 9, 10, 12, 14, 15, 18, 20, 22 ];
 
 // Parse Groups and Content Paths
 interface GroupConfig {
@@ -79,4 +80,5 @@ export default {
   isDev,
   geminiKey,
   groupConfigs,
+  postHours,
 };

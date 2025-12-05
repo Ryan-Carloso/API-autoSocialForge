@@ -10,10 +10,6 @@ import { getTemplatePath, getRenderOptionsFromEnv, getOutputDir, writeLog } from
 import { generateImagesFromCarousel } from "./modules/imageGenerator";
 import { generateCaption } from "./modules/gemini.ts";
 
-function readBuffers(files: string[]): Buffer[] {
-  return files.map((f) => fs.readFileSync(f));
-}
-
 function saveMetadata(
   groupName: string,
   selected: SelectedItem,
@@ -109,7 +105,7 @@ async function uploadImagesToPostBridge(result: GeneratedResult): Promise<string
   return ids;
 }
 
-async function postToPostBridge(group: GroupConfig, caption: string, mediaIds: string[], metadata: GeneratedResult["metadata"]): Promise<void> {
+async function postToPostBridge(group: GroupConfig, caption: string, mediaIds: string[], metadata: GeneratedResult["metadata"], scheduledAt: string): Promise<void> {
   if (!config.postbridgeToken || !config.postbridgeUrl) {
     writeLog("PostBridge configuration missing; skipping post");
     return;
@@ -119,7 +115,7 @@ async function postToPostBridge(group: GroupConfig, caption: string, mediaIds: s
     caption,
     media: mediaIds,
     is_draft: config.isDev ? true : false,
-    scheduled_at: null,
+    scheduled_at: scheduledAt,
   };
   const resp = await fetch(postsEndpoint(), {
     method: "POST",
@@ -149,25 +145,41 @@ async function postToPostBridge(group: GroupConfig, caption: string, mediaIds: s
 export async function runImagePipeline(): Promise<void> {
   writeLog("Starting image pipeline");
   for (const group of config.groupConfigs as GroupConfig[]) {
-    try {
-      writeLog(`Processing group ${group.name}`);
-      const selected: SelectedItem = await getSelectedItem(group);
-      const prompt = itemToPrompt(selected);
-      const carousel: CarouselContent = await generateCarouselWithLog(prompt);
-      const templatePath = getTemplatePath();
-      const options = getRenderOptionsFromEnv();
-      const outputDir = getOutputDir(group.name);
-      const files = await generateImagesFromCarousel(templatePath, carousel, options, outputDir);
-      writeLog(`Generated ${files.length} images at ${outputDir}`);
-      const result = saveMetadata(group.name, selected, carousel, outputDir);
-      const storagePaths = await uploadToSupabase(result);
-      const mediaIds = await uploadImagesToPostBridge(result);
-      const caption = await generateCaption(prompt);
-      await postToPostBridge(group, caption, mediaIds, result.metadata);
-      writeLog(`Completed group ${group.name}`);
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      writeLog(`Group ${group.name} error: ${msg}`);
+    writeLog(`Processing group ${group.name}`);
+    for (let i = 0; i < config.postHours.length; i++) {
+      const hour = config.postHours[i];
+      try {
+        writeLog(`Starting generation for schedule hour: ${hour}`);
+        const selected: SelectedItem = await getSelectedItem(group);
+        const prompt = itemToPrompt(selected);
+        const carousel: CarouselContent = await generateCarouselWithLog(prompt);
+        const templatePath = getTemplatePath();
+        const options = getRenderOptionsFromEnv();
+        const outputDir = getOutputDir(group.name);
+        const files = await generateImagesFromCarousel(templatePath, carousel, options, outputDir);
+        writeLog(`Generated ${files.length} images at ${outputDir}`);
+        const result = saveMetadata(group.name, selected, carousel, outputDir);
+        const storagePaths = await uploadToSupabase(result);
+        const mediaIds = await uploadImagesToPostBridge(result);
+        const caption = await generateCaption(prompt);
+
+        // Calculate scheduled time: Tomorrow at hour:00 UTC
+        const date = new Date();
+        date.setDate(date.getDate() + 1);
+        date.setUTCHours(hour, 0, 0, 0);
+        const scheduledAt = date.toISOString();
+
+        await postToPostBridge(group, caption, mediaIds, result.metadata, scheduledAt);
+        writeLog(`Completed group ${group.name} for hour ${hour}`);
+        
+        if (i < config.postHours.length - 1) {
+          writeLog("Waiting 1 minute before next post...");
+          await new Promise((resolve) => setTimeout(resolve, 60000));
+        }
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        writeLog(`Group ${group.name} hour ${hour} error: ${msg}`);
+      }
     }
   }
   writeLog("Image pipeline finished");
