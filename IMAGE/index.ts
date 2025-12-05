@@ -213,6 +213,16 @@ export async function runImagePipeline(): Promise<void> {
         await postToPostBridge(group, caption, mediaIds, result.metadata, scheduledAt);
         writeLog(`Completed group ${group.name} for hour ${hour}`);
         
+        // Cleanup: Delete local files if running in Production (not Dev)
+        if (!config.isDev) {
+          try {
+            writeLog(`[CLEANUP] Deleting local output directory: ${outputDir}`);
+            fs.rmSync(outputDir, { recursive: true, force: true });
+          } catch (cleanupErr) {
+            writeLog(`[CLEANUP ERROR] Failed to delete ${outputDir}: ${cleanupErr}`);
+          }
+        }
+
         if (i < config.postHours.length - 1) {
           writeLog("Waiting 1 minute before next post...");
           await new Promise((resolve) => setTimeout(resolve, 60000));
