@@ -9,14 +9,15 @@ import { generateCarouselWithLog } from "./modules/geminiClient";
 import { getTemplatePath, getRenderOptionsFromEnv, getOutputDir, writeLog } from "./modules/templateHandler";
 import { generateImagesFromCarousel } from "./modules/imageGenerator";
 import { generateCaption } from "./modules/gemini.ts";
+import { convertImageToVideo } from "./modules/videoConverter.ts";
 
 function saveMetadata(
   groupName: string,
   selected: SelectedItem,
   carousel: CarouselContent,
-  outputDir: string
+  outputDir: string,
+  filenames: string[]
 ): GeneratedResult {
-  const filenames = carousel.slides.map((s) => `photoID${s.id}.png`);
   const metadata = {
     group: groupName,
     selected,
@@ -33,23 +34,31 @@ function buildStoragePath(outputDir: string, group: string, filename: string): s
   return `${folder}${group}/${path.basename(outputDir)}/${filename}`;
 }
 
+function getMimeType(filename: string): string {
+  if (filename.endsWith(".mp4")) return "video/mp4";
+  return "image/png";
+}
+
 async function uploadToSupabase(result: GeneratedResult): Promise<string[]> {
   const bucket = config.supabaseBucket;
   const storagePaths: string[] = [];
   for (let i = 0; i < result.metadata.filenames.length; i++) {
-    const fullPath = path.join(result.metadata.outputDir, result.metadata.filenames[i]);
-    const fname = buildStoragePath(result.metadata.outputDir, result.metadata.group, result.metadata.filenames[i]);
+    const filename = result.metadata.filenames[i];
+    const fullPath = path.join(result.metadata.outputDir, filename);
+    const fname = buildStoragePath(result.metadata.outputDir, result.metadata.group, filename);
     const fileBuf = fs.readFileSync(fullPath);
+    const contentType = getMimeType(filename);
     const up = await supabase.storage.from(bucket).upload(fname, fileBuf, {
-      contentType: "image/png",
+      contentType,
       upsert: true,
     });
     if (up.error) throw new Error(`Supabase upload failed: ${up.error.message}`);
     storagePaths.push(fname);
-    writeLog(`Uploaded ${fname}`);
+    writeLog(`Uploaded ${fname} (${contentType})`);
   }
   return storagePaths;
 }
+
 
 async function getSignedUrls(paths: string[]): Promise<string[]> {
   const bucket = config.supabaseBucket;
@@ -76,13 +85,14 @@ async function uploadImagesToPostBridge(result: GeneratedResult): Promise<string
   for (const fname of result.metadata.filenames) {
     const fullPath = path.join(result.metadata.outputDir, fname);
     const stat = fs.statSync(fullPath);
+    const mimeType = getMimeType(fname);
     const req = await fetch(uploadsEndpoint(), {
       method: "POST",
       headers: {
         Authorization: `Bearer ${config.postbridgeToken}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ name: fname, mime_type: "image/png", size_bytes: stat.size }),
+      body: JSON.stringify({ name: fname, mime_type: mimeType, size_bytes: stat.size }),
     });
     if (!req.ok) {
       const t = await req.text();
@@ -92,7 +102,7 @@ async function uploadImagesToPostBridge(result: GeneratedResult): Promise<string
     const fileBuf = fs.readFileSync(fullPath);
     const put = await fetch(upload_url, {
       method: "PUT",
-      headers: { "Content-Type": "image/png" },
+      headers: { "Content-Type": mimeType },
       body: fileBuf,
     });
     if (!put.ok) {
@@ -100,7 +110,7 @@ async function uploadImagesToPostBridge(result: GeneratedResult): Promise<string
       throw new Error(`PostBridge media upload error ${put.status}: ${t}`);
     }
     ids.push(media_id);
-    writeLog(`PostBridge media uploaded: ${fname} -> ${media_id}`);
+    writeLog(`PostBridge media uploaded: ${fname} -> ${media_id} (${mimeType})`);
   }
   return ids;
 }
@@ -146,10 +156,15 @@ export async function runImagePipeline(): Promise<void> {
   writeLog("Starting image pipeline");
   for (const group of config.groupConfigs as GroupConfig[]) {
     writeLog(`Processing group ${group.name}`);
+    
+    // Initialize toggle state for this group (random start: true or false)
+    let isVideoBatch = Math.random() < 0.5;
+    writeLog(`Initial batch type for group ${group.name}: ${isVideoBatch ? "VIDEO" : "IMAGE"}`);
+
     for (let i = 0; i < config.postHours.length; i++) {
       const hour = config.postHours[i];
       try {
-        writeLog(`Starting generation for schedule hour: ${hour}`);
+        writeLog(`Starting generation for schedule hour: ${hour} [Type: ${isVideoBatch ? "VIDEO" : "IMAGE"}]`);
         const selected: SelectedItem = await getSelectedItem(group);
         const prompt = itemToPrompt(selected);
         const carousel: CarouselContent = await generateCarouselWithLog(prompt);
@@ -157,8 +172,34 @@ export async function runImagePipeline(): Promise<void> {
         const options = getRenderOptionsFromEnv();
         const outputDir = getOutputDir(group.name);
         const files = await generateImagesFromCarousel(templatePath, carousel, options, outputDir);
-        writeLog(`Generated ${files.length} images at ${outputDir}`);
-        const result = saveMetadata(group.name, selected, carousel, outputDir);
+        
+        // Post-process files: Convert ALL to video OR keep ALL as images
+        const finalFiles: string[] = [];
+        
+        if (isVideoBatch) {
+          writeLog(`[BATCH DECISION] Converting ALL ${files.length} slides to VIDEO`);
+          for (const f of files) {
+            try {
+              writeLog(`Converting to video: ${path.basename(f)}`);
+              const videoPath = await convertImageToVideo(f);
+              finalFiles.push(path.basename(videoPath));
+            } catch (err) {
+              writeLog(`[ERROR] Video conversion failed for ${path.basename(f)}, falling back to IMAGE: ${err}`);
+              finalFiles.push(path.basename(f));
+            }
+          }
+        } else {
+          writeLog(`[BATCH DECISION] Keeping ALL ${files.length} slides as IMAGES`);
+          for (const f of files) {
+            finalFiles.push(path.basename(f));
+          }
+        }
+        
+        // Toggle for next post in sequence
+        isVideoBatch = !isVideoBatch;
+
+        writeLog(`Generated ${files.length} items at ${outputDir}`);
+        const result = saveMetadata(group.name, selected, carousel, outputDir, finalFiles);
         const storagePaths = await uploadToSupabase(result);
         const mediaIds = await uploadImagesToPostBridge(result);
         const caption = await generateCaption(prompt);

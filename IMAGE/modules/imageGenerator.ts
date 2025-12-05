@@ -1,9 +1,14 @@
 import ffmpeg from "fluent-ffmpeg";
+import ffmpegInstaller from "@ffmpeg-installer/ffmpeg";
+import ffprobeInstaller from "@ffprobe-installer/ffprobe";
 import path from "path";
 import fs from "fs";
 import { createCanvas, loadImage, GlobalFonts, type SKRSContext2D } from "@napi-rs/canvas";
 import { CarouselContent, RenderOptions } from "./types";
 import { ensureDir } from "./templateHandler";
+
+ffmpeg.setFfmpegPath(ffmpegInstaller.path);
+ffmpeg.setFfprobePath(ffprobeInstaller.path);
 
 type FfprobeVideoStream = { width?: number; height?: number };
 

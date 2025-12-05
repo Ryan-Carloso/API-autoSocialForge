@@ -81,6 +81,12 @@ async function fetchRandomFromSupabase(table: string, itemsPerPage: number): Pro
   const arr = (data ?? []) as unknown[];
   if (arr.length === 0) throw new Error("Supabase returned empty page");
   const item = arr[Math.floor(Math.random() * arr.length)];
+  
+  // Log selected item details
+  const itemId = (item as any).id ?? "unknown";
+  const itemTitle = (item as any).title ?? "Untitled";
+  writeLog(`Selected Supabase Item - ID: ${itemId}, Title: "${itemTitle}"`);
+  
   return normalizeItem(item);
 }
 

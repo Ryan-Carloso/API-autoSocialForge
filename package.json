@@ -26,12 +26,14 @@
     "typescript": "^5.9.3"
   },
   "dependencies": {
+    "@ffmpeg-installer/ffmpeg": "^1.1.0",
+    "@ffprobe-installer/ffprobe": "^2.1.2",
     "@google/genai": "^1.30.0",
     "@google/generative-ai": "^0.24.1",
     "@napi-rs/canvas": "^0.1.83",
     "@supabase/supabase-js": "^2.46.1",
-    "fluent-ffmpeg": "^2.1.2",
     "dotenv": "^17.2.3",
+    "fluent-ffmpeg": "^2.1.2",
     "node-fetch": "^3.3.2"
   },
   "optionalDependencies": {
