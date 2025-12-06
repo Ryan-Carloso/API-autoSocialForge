@@ -4,7 +4,10 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev": "tsx src/index.ts",
+    "dev": "tsx index.ts",
+    "start": "tsx index.ts",
+    "redis:start": "brew services start redis",
+    "redis:stop": "brew services stop redis",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "image:dev": "tsx IMAGE/index.ts"
   },
@@ -26,14 +29,19 @@
     "typescript": "^5.9.3"
   },
   "dependencies": {
+    "@bull-board/api": "^6.15.0",
+    "@bull-board/express": "^6.15.0",
     "@ffmpeg-installer/ffmpeg": "^1.1.0",
     "@ffprobe-installer/ffprobe": "^2.1.2",
     "@google/genai": "^1.30.0",
     "@google/generative-ai": "^0.24.1",
     "@napi-rs/canvas": "^0.1.83",
     "@supabase/supabase-js": "^2.46.1",
+    "bullmq": "^5.65.1",
     "dotenv": "^17.2.3",
+    "express": "^5.2.1",
     "fluent-ffmpeg": "^2.1.3",
+    "ioredis": "^5.8.2",
     "node-fetch": "^3.3.2",
     "openai": "^6.10.0"
   },
